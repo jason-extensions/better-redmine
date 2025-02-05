@@ -147,13 +147,146 @@ function toggleUnselectedRows(showOnlySelected: boolean): void {
   });
 }
 
-// 監聽來自 popup 的訊息
-chrome.runtime.onMessage.addListener((request: Message, sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
-  if (request.action === "getSelectedData") {
-    const data = getSelectedTableData();
-    sendResponse({ data });
-  } else if (request.action === "toggleVisibility") {
-    toggleUnselectedRows(request.showOnlySelected);
-    sendResponse({ success: true });
+/**
+ * 開啟指定行的上下文選單
+ * @param row - 表格行元素
+ * @returns 上下文選單元素
+ */
+async function openContextMenu(row: HTMLElement): Promise<HTMLElement | null> {
+  return new Promise((resolve) => {
+    const contextMenuTrigger = row.querySelector<HTMLElement>(".js-contextmenu");
+    if (contextMenuTrigger) {
+      contextMenuTrigger.click();
+      // 等一段時間，確保上下文選單已經開啟
+      setTimeout(() => {
+        resolve(document.querySelector<HTMLElement>("#context-menu") || null);
+      }, 500);
+    } else {
+      resolve(null);
+    }
+  });
+}
+
+/**
+ * 在上下文選單中找到指定選項
+ * @param contextMenu - 上下文選單元素
+ * @param key - 選項名稱
+ * @returns 選項的子選單
+ */
+function findSubmenu(contextMenu: HTMLElement, key: string): HTMLElement | null {
+  console.log("🚀 ~ content.ts:172 ~ findSubmenu ~ key:", key);
+
+  const menuItems = contextMenu.querySelectorAll("li a");
+
+  console.log("🚀 ~ content.ts:173 ~ findSubmenu ~ menuItems:", menuItems);
+
+  for (const item of menuItems) {
+    if (item.textContent?.trim() === key) {
+      return item.closest("li")?.querySelector("ul") || null;
+    }
   }
-});
+  return null;
+}
+
+/**
+ * 在子選單中設置指定值
+ * @param submenu - 子選單元素
+ * @param value - 目標值
+ * @param issueId - 議題 ID
+ * @returns 是否成功設置值
+ */
+function setValue(submenu: HTMLElement, value: string, issueId: string): boolean {
+  const items = submenu.querySelectorAll("a");
+  for (const item of items) {
+    if (item.textContent?.trim() === value) {
+      const originalHref = item.getAttribute("href") || "";
+      const newHref = originalHref.replace(/\/issues\/\d+/, `/issues/${issueId}`);
+      item.setAttribute("href", newHref);
+      console.log("item :>> ", item);
+      item.click();
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * 批量更新議題欄位
+ * @param key - 要更新的欄位名稱
+ * @param value - 要設置的值
+ */
+async function batchUpdate(key: string, value: string): Promise<void> {
+  console.log("key, value :>> ", key, value);
+  const table = document.querySelector<HTMLTableElement>("#content table.list");
+  if (!table) return;
+
+  const selectedRows = Array.from(table.querySelectorAll<HTMLElement>("tbody tr")).filter((row) =>
+    row.querySelector('input[type="checkbox"]:checked')
+  );
+
+  if (!selectedRows.length) {
+    throw new Error("沒有選中任何列");
+  }
+
+  const contextMenu = await openContextMenu(selectedRows[0]);
+
+  console.log("🚀 ~ content.ts:221 ~ batchUpdate ~ contextMenu:", contextMenu);
+
+  if (!contextMenu) {
+    throw new Error("無法開啟上下文選單");
+  }
+
+  const submenu = findSubmenu(contextMenu, key);
+
+  console.log("🚀 ~ content.ts:229 ~ batchUpdate ~ submenu:", submenu);
+
+  if (!submenu) {
+    throw new Error("無法找到子選單");
+  }
+
+  const columnIndexes = getColumnIndexes(table);
+
+  for (const row of selectedRows) {
+    const cells = row.getElementsByTagName("td");
+    const subjectCell = cells[columnIndexes.subject];
+    const subjectLink = subjectCell?.querySelector("a");
+
+    if (!subjectLink?.href) {
+      continue;
+    }
+
+    const issueId = extractIssueId(subjectLink.href);
+    if (!issueId) {
+      continue;
+    }
+
+    setValue(submenu, value, issueId);
+
+    // 等待一小段時間，避免請求過於頻繁
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+}
+
+// 監聽來自 popup 的訊息
+chrome.runtime.onMessage.addListener(
+  async (request: Message, sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
+    if (request.action === "getSelectedData") {
+      const data = getSelectedTableData();
+      sendResponse({ data });
+    } else if (request.action === "toggleVisibility") {
+      toggleUnselectedRows(request.showOnlySelected);
+      sendResponse({ success: true });
+    } else if (request.action === "batchUpdate") {
+      try {
+        await batchUpdate(request.key, request.value);
+        sendResponse({ success: true });
+      } catch (error) {
+        sendResponse({
+          success: false,
+          error: error instanceof Error ? error.message : "未知錯誤",
+        });
+      }
+      return true;
+    }
+  }
+);

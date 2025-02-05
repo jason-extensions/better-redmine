@@ -14,6 +14,7 @@ interface RedmineItem {
 interface MessageResponse {
   data?: RedmineItem[];
   success?: boolean;
+  error?: string;
 }
 
 interface ToggleMessage {
@@ -25,7 +26,13 @@ interface GetDataMessage {
   action: "getSelectedData";
 }
 
-type Message = ToggleMessage | GetDataMessage;
+interface BatchUpdateMessage {
+  action: "batchUpdate";
+  key: string;
+  value: string;
+}
+
+type Message = ToggleMessage | GetDataMessage | BatchUpdateMessage;
 
 declare namespace chrome.runtime {
   interface MessageSender {

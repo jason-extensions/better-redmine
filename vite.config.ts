@@ -29,10 +29,10 @@ export default defineConfig({
           if (chunkInfo.name === "contentInject") {
             return "inject.js";
           }
-          return "popup/[name]-[hash].js";
+          return "popup/[name].js";
         },
         // 非入口 chunk 檔案命名
-        chunkFileNames: "scripts/[name]-[hash].js",
+        chunkFileNames: "scripts/[name].js",
         // 靜態資源檔案命名
         assetFileNames: "popup/[name][extname]",
       },
