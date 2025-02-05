@@ -1,4 +1,5 @@
-const BASE_URL = "https://redmine.twjoin.com";
+import { BASE_URL } from "../constants/site";
+
 const HIDDEN_CLASS = "redmine-formatter-hidden";
 
 // 在文件頭部插入所需的 CSS 樣式
