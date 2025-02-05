@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { TabType } from "../../constants/tabs";
+
 interface Props {
-  id: string;
-  activeTab: string;
+  id: TabType;
+  activeTab: TabType;
 }
 
 defineProps<Props>();

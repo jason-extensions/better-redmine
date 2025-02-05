@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import TabPanel from "./components/TabPanel.vue";
+import { TabType, TabLabel } from "../constants/tabs";
 
-const activeTab = ref("general");
+const activeTab = ref<TabType>(TabType.FORMAT);
 const formatTemplate = ref("- [#{id}]({url})");
 const showOnlySelected = ref(false);
 const result = ref("");
 
-const switchTab = (tab: string) => {
+const switchTab = (tab: TabType) => {
   activeTab.value = tab;
 };
 
@@ -44,12 +45,12 @@ const toggleVisibility = async () => {
 <template>
   <div class="container">
     <div class="tabs">
-      <button v-for="tab in ['general', 'settings', 'about']" :key="tab" class="tab" :class="{ active: activeTab === tab }" @click="switchTab(tab)">
-        {{ tab === "general" ? "一般" : tab === "settings" ? "設定" : "關於" }}
+      <button v-for="tab in Object.values(TabType)" :key="tab" class="tab" :class="{ active: activeTab === tab }" @click="switchTab(tab)">
+        {{ TabLabel[tab] }}
       </button>
     </div>
 
-    <TabPanel id="general" :active-tab="activeTab">
+    <TabPanel :id="TabType.FORMAT" :active-tab="activeTab">
       <div class="visibility-toggle">
         <label class="toggle">
           <input type="checkbox" v-model="showOnlySelected" @change="toggleVisibility" />
@@ -74,12 +75,12 @@ const toggleVisibility = async () => {
       </div>
     </TabPanel>
 
-    <TabPanel id="settings" :active-tab="activeTab">
-      <!-- 設定頁面內容 -->
+    <TabPanel :id="TabType.BATCH" :active-tab="activeTab">
+      <!-- 批量修改頁面的內容將在這裡實現 -->
     </TabPanel>
 
-    <TabPanel id="about" :active-tab="activeTab">
-      <!-- 關於頁面內容 -->
+    <TabPanel :id="TabType.NAV" :active-tab="activeTab">
+      <!-- 快捷導航頁面的內容將在這裡實現 -->
     </TabPanel>
   </div>
 </template>
