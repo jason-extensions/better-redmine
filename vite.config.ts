@@ -22,7 +22,6 @@ export default defineConfig({
       output: {
         // 入口檔案命名
         entryFileNames: (chunkInfo) => {
-          console.log("chunkInfo :>> ", chunkInfo);
           if (chunkInfo.name === "content") {
             return "content.js";
           }

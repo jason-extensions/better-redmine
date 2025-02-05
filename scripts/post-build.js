@@ -17,8 +17,6 @@ async function copyAssets() {
     for (const size of icons) {
       await copyFile(resolve(srcDir, "icons", `icon${size}.png`), resolve(distDir, "icons", `icon${size}.png`));
     }
-
-    console.log("Assets copied successfully!");
   } catch (error) {
     console.error("Error copying assets:", error);
     process.exit(1);

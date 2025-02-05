@@ -174,12 +174,7 @@ async function openContextMenu(row: HTMLElement): Promise<HTMLElement | null> {
  * @returns 選項的子選單
  */
 function findSubmenu(contextMenu: HTMLElement, key: string): HTMLElement | null {
-  console.log("🚀 ~ content.ts:172 ~ findSubmenu ~ key:", key);
-
   const menuItems = contextMenu.querySelectorAll("li a");
-
-  console.log("🚀 ~ content.ts:173 ~ findSubmenu ~ menuItems:", menuItems);
-
   for (const item of menuItems) {
     if (item.textContent?.trim() === key) {
       return item.closest("li")?.querySelector("ul") || null;
@@ -202,7 +197,6 @@ function setValue(submenu: HTMLElement, value: string, issueId: string): boolean
       const originalHref = item.getAttribute("href") || "";
       const newHref = originalHref.replace(/\/issues\/\d+/, `/issues/${issueId}`);
       item.setAttribute("href", newHref);
-      console.log("item :>> ", item);
       item.click();
       return true;
     }
@@ -216,7 +210,6 @@ function setValue(submenu: HTMLElement, value: string, issueId: string): boolean
  * @param value - 要設置的值
  */
 async function batchUpdate(key: string, value: string): Promise<void> {
-  console.log("key, value :>> ", key, value);
   const table = document.querySelector<HTMLTableElement>("#content table.list");
   if (!table) return;
 
@@ -229,17 +222,11 @@ async function batchUpdate(key: string, value: string): Promise<void> {
   }
 
   const contextMenu = await openContextMenu(selectedRows[0]);
-
-  console.log("🚀 ~ content.ts:221 ~ batchUpdate ~ contextMenu:", contextMenu);
-
   if (!contextMenu) {
     throw new Error("無法開啟上下文選單");
   }
 
   const submenu = findSubmenu(contextMenu, key);
-
-  console.log("🚀 ~ content.ts:229 ~ batchUpdate ~ submenu:", submenu);
-
   if (!submenu) {
     throw new Error("無法找到子選單");
   }
@@ -268,15 +255,15 @@ async function batchUpdate(key: string, value: string): Promise<void> {
 }
 
 // 監聽來自 popup 的訊息
-chrome.runtime.onMessage.addListener(
-  async (request: Message, sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
-    if (request.action === "getSelectedData") {
-      const data = getSelectedTableData();
-      sendResponse({ data });
-    } else if (request.action === "toggleVisibility") {
-      toggleUnselectedRows(request.showOnlySelected);
-      sendResponse({ success: true });
-    } else if (request.action === "batchUpdate") {
+chrome.runtime.onMessage.addListener((request: Message, sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
+  if (request.action === "getSelectedData") {
+    const data = getSelectedTableData();
+    sendResponse({ data });
+  } else if (request.action === "toggleVisibility") {
+    toggleUnselectedRows(request.showOnlySelected);
+    sendResponse({ success: true });
+  } else if (request.action === "batchUpdate") {
+    (async () => {
       try {
         await batchUpdate(request.key, request.value);
         sendResponse({ success: true });
@@ -286,7 +273,7 @@ chrome.runtime.onMessage.addListener(
           error: error instanceof Error ? error.message : "未知錯誤",
         });
       }
-      return true;
-    }
+    })();
+    return true;
   }
-);
+});
