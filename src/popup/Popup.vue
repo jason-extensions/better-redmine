@@ -35,6 +35,37 @@ const switchTab = (tab: TabType) => {
   </div>
 </template>
 
+<style scoped>
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #ccc;
+  margin-bottom: 15px;
+}
+
+.tab {
+  padding: 10px 20px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  position: relative;
+}
+
+.tab.active {
+  color: #2196f3;
+  font-weight: bold;
+}
+
+.tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #2196f3;
+}
+</style>
+
 <style>
 @import "../assets/styles/popup.css";
 </style>
