@@ -16,6 +16,7 @@
 
 # 專案規範
 
+- 使用 pnpm 來管理套件
 - 變數聲明優先使用 const 而不是 let
 - Typescript 優先使用 interface 而不是 type
 - 變數和函數名使用 camelCase，組件名使用 PascalCase
