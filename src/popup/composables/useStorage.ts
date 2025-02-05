@@ -41,7 +41,11 @@ export function useStorage<T>({ key, defaultValue, sync = true }: UseStorageOpti
     try {
       const result = await storage.get(key);
       if (result[key] !== undefined) {
-        data.value = result[key];
+        try {
+          data.value = JSON.parse(result[key]);
+        } catch (error) {
+          console.error("Failed to parse data from storage:", error);
+        }
       }
     } catch (error) {
       console.error("Failed to load from storage:", error);
@@ -53,7 +57,7 @@ export function useStorage<T>({ key, defaultValue, sync = true }: UseStorageOpti
    */
   const save = async () => {
     try {
-      await storage.set({ [key]: data.value });
+      await storage.set({ [key]: JSON.stringify(data.value) });
     } catch (error) {
       console.error("Failed to save to storage:", error);
     }
