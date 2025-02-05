@@ -96,27 +96,6 @@ label {
   color: var(--text-color);
 }
 
-input[type="text"] {
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 0.75rem;
-  background-color: var(--input-bg);
-  font-size: 0.875rem;
-  transition: all 0.2s;
-  box-sizing: border-box;
-}
-
-input[type="text"]:hover {
-  border-color: #d1d5db;
-}
-
-input[type="text"]:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
 /* 關鍵字提示區域 */
 .keywords {
   font-size: 0.75rem;
@@ -137,32 +116,6 @@ input[type="text"]:focus {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.75rem;
   color: var(--text-color);
-}
-
-/* 格式化按鈕 */
-#format-btn {
-  width: 100%;
-  padding: 0.75rem;
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: 0.75rem;
-  font-weight: 600;
-  font-size: 0.875rem;
-  cursor: pointer;
-  transition: all 0.2s;
-  margin-bottom: 1rem;
-  box-shadow: var(--shadow-sm);
-}
-
-#format-btn:hover {
-  background-color: var(--primary-hover);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-#format-btn:active {
-  transform: translateY(0);
 }
 
 /* 結果區域 */
