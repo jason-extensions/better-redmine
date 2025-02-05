@@ -22,9 +22,9 @@ export default defineConfig({
       preserveEntrySignatures: "strict",
       output: {
         entryFileNames: (chunkInfo) => {
-          return chunkInfo.name === "content" ? "[name].js" : "popup/[name].js";
+          return chunkInfo.name === "content" ? "[name].js" : "src/popup/[name].js";
         },
-        chunkFileNames: "popup/[name].[hash].js",
+        chunkFileNames: "scripts/[name].[hash].js",
         assetFileNames: () => {
           return "src/popup/[name][extname]";
         },

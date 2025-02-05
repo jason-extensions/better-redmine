@@ -15,8 +15,7 @@
   "content_scripts": [
     {
       "matches": ["*://redmine.twjoin.com/*"],
-      "js": ["content.js"],
-      "css": ["src/popup/popup.css"]
+      "js": ["content.js"]
     }
   ]
 }
