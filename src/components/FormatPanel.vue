@@ -52,7 +52,9 @@ const toggleVisibility = async () => {
 
   <div class="keywords">
     💡 可用關鍵字：
-    <code v-for="keyword in ['project', 'tracker', 'status', 'subject', 'url', 'id']" :key="keyword"> {{ "{" }}{{ keyword }}{{ "}" }} </code>
+    <code v-for="keyword in ['project', 'tracker', 'status', 'subject', 'url', 'id', 'date', 'replies', 'issues']" :key="keyword">
+      {{ "{" }}{{ keyword }}{{ "}" }}
+    </code>
   </div>
 
   <AppButton @click="formatData">格式化</AppButton>

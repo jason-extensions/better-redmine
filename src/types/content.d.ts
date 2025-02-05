@@ -5,6 +5,9 @@ interface RedmineItem {
   subject: string;
   url: string;
   id: string;
+  date: string;
+  replies: string;
+  issues: string;
   [key: string]: string;
 }
 

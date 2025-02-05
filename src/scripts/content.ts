@@ -21,6 +21,9 @@ function getColumnIndexes(table: HTMLTableElement) {
     tracker: -1,
     status: -1,
     subject: -1,
+    date: -1,
+    replies: -1,
+    issues: -1,
   };
 
   headerCells.forEach((cell, index) => {
@@ -37,6 +40,15 @@ function getColumnIndexes(table: HTMLTableElement) {
         break;
       case "主旨":
         indexes.subject = index;
+        break;
+      case "日期":
+        indexes.date = index;
+        break;
+      case "回應":
+        indexes.replies = index;
+        break;
+      case "議題":
+        indexes.issues = index;
         break;
     }
   });
@@ -63,6 +75,22 @@ function getBaseUrl(): string {
 }
 
 /**
+ * 從表格單元格中提取連結資訊
+ * @param cell - 表格單元格元素
+ * @returns 連結資訊物件
+ */
+function extractLinkInfo(cell: HTMLTableCellElement | null) {
+  const link = cell?.querySelector("a");
+  if (!link) return { url: "", id: "" };
+
+  const fullUrl = `${getBaseUrl()}${link.getAttribute("href")}`;
+  return {
+    url: fullUrl,
+    id: extractIssueId(fullUrl),
+  };
+}
+
+/**
  * 獲取表格中被選中的資料，如果沒有選中任何列則返回所有列的資料
  * @returns 選中的資料陣列或所有資料陣列
  */
@@ -81,16 +109,23 @@ function getSelectedTableData(): RedmineItem[] {
   return rowsToProcess.map((row) => {
     const cells = row.getElementsByTagName("td");
     const subjectCell = cells[columnIndexes.subject];
-    const subjectLink = subjectCell?.querySelector("a");
-    const fullUrl = subjectLink ? `${getBaseUrl()}${subjectLink.getAttribute("href")}` : "";
+    const issuesCell = cells[columnIndexes.issues];
+
+    // 從主旨欄位取得連結資訊
+    const subjectLinkInfo = extractLinkInfo(subjectCell);
+    // 從議題欄位取得連結資訊
+    const issuesLinkInfo = extractLinkInfo(issuesCell);
 
     return {
       project: cells[columnIndexes.project]?.textContent?.trim() || "",
       tracker: cells[columnIndexes.tracker]?.textContent?.trim() || "",
       status: cells[columnIndexes.status]?.textContent?.trim() || "",
       subject: subjectCell?.textContent?.trim() || "",
-      url: fullUrl,
-      id: extractIssueId(fullUrl),
+      url: subjectLinkInfo.url || issuesLinkInfo.url, // 優先使用主旨的連結，如果沒有則使用議題的連結
+      id: subjectLinkInfo.id || issuesLinkInfo.id, // 優先使用主旨的 ID，如果沒有則使用議題的 ID
+      date: cells[columnIndexes.date]?.textContent?.trim() || "",
+      replies: cells[columnIndexes.replies]?.textContent?.trim() || "",
+      issues: issuesCell?.textContent?.trim() || "",
     };
   });
 }
