@@ -1,24 +1,14 @@
 <script setup lang="ts">
 import AppButton from "@/components/app/AppButton.vue";
 import AppInput from "@/components/app/AppInput.vue";
+import { useGetCurrentTabId } from "@/composables/useGetCurrentTabId";
 import { ref } from "vue";
 
 const formatTemplate = ref("- [#{id}]({url})");
 const showOnlySelected = ref(false);
 const result = ref("");
 
-// 新增一個函數來獲取目前的分頁 ID
-const getCurrentTabId = async () => {
-  return new Promise<number>((resolve, reject) => {
-    chrome.runtime.sendMessage({ action: "getCurrentTabId" }, (response) => {
-      if (response && response.tabId) {
-        resolve(response.tabId);
-      } else {
-        reject(new Error("無法獲取目前分頁 ID"));
-      }
-    });
-  });
-};
+const { getCurrentTabId } = useGetCurrentTabId();
 
 const formatData = async () => {
   try {

@@ -2,6 +2,9 @@
 import { ref } from "vue";
 import AppSelect from "./AppSelect.vue";
 import AppButton from "./app/AppButton.vue";
+import { useGetCurrentTabId } from "@/composables/useGetCurrentTabId";
+
+const { getCurrentTabId } = useGetCurrentTabId();
 
 const statusOptions = [
   { label: "New", value: "New" },
@@ -24,11 +27,11 @@ const handleUpdate = async () => {
   try {
     loading.value = true;
     // 獲取當前活動的標籤頁
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab.id) return;
+    const tabId = await getCurrentTabId();
+    if (!tabId) return;
 
     // 發送消息到 content script
-    const response = await chrome.tabs.sendMessage(tab.id, {
+    const response = await chrome.tabs.sendMessage(tabId, {
       action: "batchUpdate",
       key: selectedField.value,
       value: selectedValue.value,
