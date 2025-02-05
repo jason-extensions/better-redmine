@@ -60,7 +60,7 @@ function extractIssueId(url: string): string {
  * @returns 選中的資料陣列
  */
 function getSelectedTableData(): RedmineItem[] {
-  const table = document.querySelector<HTMLTableElement>("#content table.issues");
+  const table = document.querySelector<HTMLTableElement>("#content table.list");
   if (!table) return [];
 
   const columnIndexes = getColumnIndexes(table);
