@@ -1,12 +1,20 @@
 <script setup lang="ts">
-import { ref } from "vue";
 import { v4 as uuidv4 } from "uuid";
 import { BASE_URL } from "../../constants/site";
 import type { NavItem } from "../../types/nav";
+import AppButton from "@/components/app/AppButton.vue";
+import AppInput from "@/components/app/AppInput.vue";
+import { ref } from "vue";
+import { useStorage } from "../composables/useStorage";
 
-const navItems = ref<NavItem[]>([]);
 const newPath = ref("");
 const newLabel = ref("");
+
+// 使用 useStorage 來管理導航項目
+const { data: navItems } = useStorage<NavItem[]>({
+  key: "navItems",
+  defaultValue: [],
+});
 
 /**
  * 新增導航項目
@@ -23,9 +31,6 @@ const addNavItem = () => {
   // 清空輸入框
   newPath.value = "";
   newLabel.value = "";
-
-  // 保存到 storage
-  saveNavItems();
 };
 
 /**
@@ -33,7 +38,6 @@ const addNavItem = () => {
  */
 const removeNavItem = (id: string) => {
   navItems.value = navItems.value.filter((item) => item.id !== id);
-  saveNavItems();
 };
 
 /**
@@ -43,46 +47,28 @@ const navigateTo = (path: string) => {
   const url = `${BASE_URL}${path}`;
   chrome.tabs.create({ url });
 };
-
-/**
- * 保存導航項目到 storage
- */
-const saveNavItems = () => {
-  chrome.storage.sync.set({ navItems: navItems.value });
-};
-
-/**
- * 從 storage 載入導航項目
- */
-const loadNavItems = async () => {
-  const result = await chrome.storage.sync.get("navItems");
-  if (result.navItems) {
-    navItems.value = result.navItems;
-  }
-};
-
-// 初始化時載入儲存的導航項目
-loadNavItems();
 </script>
 
 <template>
   <div class="nav-panel">
     <div class="nav-form">
       <div class="input-group">
-        <input type="text" v-model="newLabel" placeholder="導航名稱" @keyup.enter="addNavItem" />
-        <input type="text" v-model="newPath" placeholder="路徑 (例如: /issues)" @keyup.enter="addNavItem" />
-        <button @click="addNavItem" :disabled="!newPath || !newLabel">新增</button>
+        <AppInput v-model="newLabel" placeholder="導航名稱" @keyup.enter="addNavItem" />
+        <AppInput v-model="newPath" placeholder="路徑 (例如: /issues)" @keyup.enter="addNavItem" />
       </div>
+      <AppButton @click="addNavItem" :disabled="!newPath || !newLabel"> 新增 </AppButton>
     </div>
 
     <div class="nav-list">
       <div v-if="navItems.length === 0" class="empty-state">尚未新增任何導航項目</div>
 
       <div v-for="item in navItems" :key="item.id" class="nav-item">
-        <button class="nav-button" @click="navigateTo(item.path)">
+        <button class="nav-link" @click="navigateTo(item.path)">
           {{ item.label }}
         </button>
-        <button class="delete-button" @click="removeNavItem(item.id)">✕</button>
+        <button class="delete-button" @click="removeNavItem(item.id)">
+          <span class="delete-icon">✕</span>
+        </button>
       </div>
     </div>
   </div>
@@ -90,67 +76,79 @@ loadNavItems();
 
 <style scoped>
 .nav-panel {
-  padding: 16px;
+  padding: 1rem;
 }
 
 .nav-form {
-  margin-bottom: 16px;
+  margin-bottom: 1.25rem;
 }
 
 .input-group {
   display: flex;
-  gap: 8px;
-}
-
-.input-group input {
-  flex: 1;
-  padding: 8px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
 .nav-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-
-.nav-item {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.nav-button {
-  flex: 1;
-  padding: 8px 16px;
-  background-color: #f0f0f0;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  text-align: left;
-}
-
-.nav-button:hover {
-  background-color: #e0e0e0;
-}
-
-.delete-button {
-  padding: 4px 8px;
-  background-color: #ff4444;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.delete-button:hover {
-  background-color: #cc0000;
+  gap: 0.75rem;
 }
 
 .empty-state {
   text-align: center;
-  color: #666;
-  padding: 16px;
+  color: var(--secondary-text);
+  padding: 1rem;
+  background-color: var(--input-bg);
+  border-radius: 0.75rem;
+  border: 1px solid var(--border-color);
+}
+
+.nav-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.nav-link {
+  flex: 1;
+  padding: 0.75rem;
+  background-color: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 0.75rem;
+  color: var(--text-color);
+  font-size: 0.875rem;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.2s;
+}
+
+.nav-link:hover {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+  transform: translateY(-1px);
+}
+
+.delete-button {
+  padding: 0.5rem;
+  background-color: var(--error-bg);
+  color: var(--error-color);
+  border: none;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.delete-button:hover {
+  background-color: var(--error-hover);
+  transform: translateY(-1px);
+}
+
+.delete-icon {
+  font-size: 0.75rem;
+  line-height: 1;
 }
 </style>

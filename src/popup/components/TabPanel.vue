@@ -1,26 +1,22 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import { TabType } from "../../constants/tabs";
+import { useLazy, type LazyProps } from "../composables/useLazy";
 
-interface Props {
+interface Props extends LazyProps {
   id: TabType;
   activeTab: TabType;
 }
 
-defineProps<Props>();
+const props = defineProps<Props>();
+
+const isActive = computed(() => props.id === props.activeTab);
+
+const { hasContent } = useLazy(props, isActive);
 </script>
 
 <template>
-  <div class="tab-content" :class="{ active: id === activeTab }">
+  <div class="tab-content" v-if="hasContent" v-show="isActive">
     <slot></slot>
   </div>
 </template>
-
-<style scoped>
-.tab-content {
-  display: none;
-}
-
-.tab-content.active {
-  display: block;
-}
-</style>
