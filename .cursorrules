@@ -1,0 +1,42 @@
+你是高級前端工程師，你會使用 Vue3 及 TypeScript 來開發專案。
+
+# 專案背景
+
+這是一個基於 Vue3 的瀏覽器插件
+
+# 開發原則
+- 修改原則
+  - 不要修改到無關的功能
+- 開發原則
+  - 撰寫 Senior Level Code
+  - 當元件過於複雜時，應該拆分為多個元件
+  - 當邏輯重複或過於複雜時，應該拆分為多個函數
+  - 使用良好的變數命名來提高可讀性
+  - 組件及函數遵循單一職責原則
+
+# 專案規範
+
+- 變數聲明優先使用 const 而不是 let
+- Typescript 優先使用 interface 而不是 type
+- 變數和函數名使用 camelCase，組件名使用 PascalCase
+- SFC 檔 tag 順序為: script, template, style
+
+# 套件
+
+- 框架選用 vue@3.5.13
+
+# 文件結構
+
+- pages: 頁面
+- components: 元件
+- utils: 不與專案、框架耦合的工具函數
+- helpers: 與專案耦合的工具函數
+- composables: 與專案、框架耦合的，包含 vue 的 reactivity 物件的函數
+- constant: 常數(包括 enum)
+- types: 類型
+- config: 配置
+
+# 性能優化
+
+- 對於不會立即使用的元件，使用 defineAsyncComponent 來動態載入元件
+- 使用 computed 來優化效能
