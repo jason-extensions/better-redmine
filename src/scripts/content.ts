@@ -135,7 +135,7 @@ function getSelectedTableData(): RedmineItem[] {
  * @param showOnlySelected - 是否只顯示選中的列
  */
 function toggleUnselectedRows(showOnlySelected: boolean): void {
-  const table = document.querySelector<HTMLTableElement>("#content table.issues");
+  const table = document.querySelector<HTMLTableElement>("#content table.list");
   if (!table) return;
 
   const rows = table.querySelectorAll("tbody tr");
