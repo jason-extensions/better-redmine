@@ -7,33 +7,65 @@ const formatTemplate = ref("- [#{id}]({url})");
 const showOnlySelected = ref(false);
 const result = ref("");
 
-const formatData = async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab.id) return;
-
-  chrome.tabs.sendMessage(tab.id, { action: "getSelectedData" }, (response: MessageResponse) => {
-    if (response?.data) {
-      result.value = response.data
-        .map((item: RedmineItem) => {
-          let formatted = formatTemplate.value;
-          Object.entries(item).forEach(([key, value]) => {
-            formatted = formatted.replace(`{${key}}`, String(value));
-          });
-          return formatted;
-        })
-        .join("\n");
-    }
+// 新增一個函數來獲取目前的分頁 ID
+const getCurrentTabId = async () => {
+  return new Promise<number>((resolve, reject) => {
+    chrome.runtime.sendMessage({ action: "getCurrentTabId" }, (response) => {
+      if (response && response.tabId) {
+        resolve(response.tabId);
+      } else {
+        reject(new Error("無法獲取目前分頁 ID"));
+      }
+    });
   });
 };
 
-const toggleVisibility = async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab.id) return;
+const formatData = async () => {
+  try {
+    const tabId = await getCurrentTabId();
 
-  chrome.tabs.sendMessage(tab.id, {
-    action: "toggleVisibility",
-    showOnlySelected: showOnlySelected.value,
-  });
+    chrome.tabs.sendMessage(tabId, { action: "getSelectedData" }, (response: MessageResponse) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error:", chrome.runtime.lastError);
+        return;
+      }
+
+      if (response?.data) {
+        result.value = response.data
+          .map((item: RedmineItem) => {
+            let formatted = formatTemplate.value;
+            Object.entries(item).forEach(([key, value]) => {
+              formatted = formatted.replace(`{${key}}`, String(value));
+            });
+            return formatted;
+          })
+          .join("\n");
+      }
+    });
+  } catch (error) {
+    console.error("Error:", error);
+  }
+};
+
+const toggleVisibility = async () => {
+  try {
+    const tabId = await getCurrentTabId();
+
+    chrome.tabs.sendMessage(
+      tabId,
+      {
+        action: "toggleVisibility",
+        showOnlySelected: showOnlySelected.value,
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error("Error:", chrome.runtime.lastError);
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error:", error);
+  }
 };
 </script>
 
