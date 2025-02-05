@@ -16,18 +16,25 @@ export default defineConfig({
     outDir: "dist",
     rollupOptions: {
       input: {
-        popup: resolve(__dirname, "src/popup/popup.html"),
-        content: resolve(__dirname, "src/scripts/content.ts"),
+        popup: "./index.html",
+        content: "src/scripts/content.ts",
       },
-      preserveEntrySignatures: "strict",
       output: {
+        // 入口檔案命名
         entryFileNames: (chunkInfo) => {
-          return chunkInfo.name === "content" ? "[name].js" : "src/popup/[name].js";
+          console.log("chunkInfo :>> ", chunkInfo);
+          if (chunkInfo.name === "content") {
+            return "content.js";
+          }
+          if (chunkInfo.name === "contentInject") {
+            return "inject.js";
+          }
+          return "popup/[name]-[hash].js";
         },
-        chunkFileNames: "scripts/[name].[hash].js",
-        assetFileNames: () => {
-          return "src/popup/[name][extname]";
-        },
+        // 非入口 chunk 檔案命名
+        chunkFileNames: "scripts/[name]-[hash].js",
+        // 靜態資源檔案命名
+        assetFileNames: "popup/[name][extname]",
       },
     },
   },

@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import { v4 as uuidv4 } from "uuid";
-import { BASE_URL } from "../../constants/site";
-import type { NavItem } from "../../types/nav";
+import type { NavItem } from "@/types/nav";
 import AppButton from "@/components/app/AppButton.vue";
 import AppInput from "@/components/app/AppInput.vue";
 import { ref } from "vue";
-import { useStorage } from "../composables/useStorage";
+import { useStorage } from "@/composables/useStorage";
+import { useSetting } from "@/composables/useSetting";
 
 const newPath = ref("");
 const newLabel = ref("");
+
+const { siteUrl } = useSetting();
 
 // 使用 useStorage 來管理導航項目
 const { data: navItems } = useStorage<NavItem[]>({
@@ -44,7 +46,7 @@ const removeNavItem = (id: string) => {
  * 導航到目標頁面
  */
 const navigateTo = (path: string) => {
-  const url = `${BASE_URL}${path}`;
+  const url = `${siteUrl.value}${path}`;
   chrome.tabs.create({ url });
 };
 </script>

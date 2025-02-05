@@ -1,30 +1,67 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+import { ref } from "vue";
+import TabPanel from "@/components/TabPanel.vue";
+import FormatPanel from "@/components/FormatPanel.vue";
+import BatchPanel from "@/components/BatchPanel.vue";
+import NavPanel from "@/components/NavPanel.vue";
+import { TabType, TabLabel } from "@/constants/tabs";
+
+const activeTab = ref<TabType>(TabType.FORMAT);
+
+const switchTab = (tab: TabType) => {
+  activeTab.value = tab;
+};
 </script>
 
 <template>
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="/vite.svg" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://vuejs.org/" target="_blank">
-      <img src="./assets/vue.svg" class="logo vue" alt="Vue logo" />
-    </a>
+  <div class="container">
+    <div class="tabs">
+      <button v-for="tab in Object.values(TabType)" :key="tab" class="tab" :class="{ active: activeTab === tab }" @click="switchTab(tab)">
+        {{ TabLabel[tab] }}
+      </button>
+    </div>
+
+    <TabPanel :id="TabType.FORMAT" :active-tab="activeTab">
+      <FormatPanel />
+    </TabPanel>
+
+    <TabPanel :id="TabType.BATCH" :active-tab="activeTab">
+      <BatchPanel />
+    </TabPanel>
+
+    <TabPanel :id="TabType.NAV" :active-tab="activeTab">
+      <NavPanel />
+    </TabPanel>
   </div>
-  <HelloWorld msg="Vite + Vue" />
 </template>
 
 <style scoped>
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: filter 300ms;
+.tabs {
+  display: flex;
+  border-bottom: 1px solid #ccc;
+  margin-bottom: 15px;
 }
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
+
+.tab {
+  padding: 10px 20px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  position: relative;
 }
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #42b883aa);
+
+.tab.active {
+  color: #2196f3;
+  font-weight: bold;
+}
+
+.tab.active::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #2196f3;
 }
 </style>

@@ -1,5 +1,3 @@
-import { BASE_URL } from "../constants/site";
-
 const HIDDEN_CLASS = "redmine-formatter-hidden";
 
 // 在文件頭部插入所需的 CSS 樣式
@@ -56,6 +54,15 @@ function extractIssueId(url: string): string {
 }
 
 /**
+ * 獲取當前頁面的基礎 URL
+ * @returns 基礎 URL，例如: https://redmine.example.com/
+ */
+function getBaseUrl(): string {
+  const url = new URL(window.location.href);
+  return `${url.protocol}//${url.host}/`;
+}
+
+/**
  * 獲取表格中被選中的資料
  * @returns 選中的資料陣列
  */
@@ -70,7 +77,7 @@ function getSelectedTableData(): RedmineItem[] {
     const cells = row.getElementsByTagName("td");
     const subjectCell = cells[columnIndexes.subject];
     const subjectLink = subjectCell?.querySelector("a");
-    const fullUrl = subjectLink ? `${BASE_URL}${subjectLink.getAttribute("href")}` : "";
+    const fullUrl = subjectLink ? `${getBaseUrl()}${subjectLink.getAttribute("href")}` : "";
 
     return {
       project: cells[columnIndexes.project]?.textContent?.trim() || "",

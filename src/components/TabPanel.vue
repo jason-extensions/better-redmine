@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
-import { TabType } from "../../constants/tabs";
-import { useLazy, type LazyProps } from "../composables/useLazy";
+import { TabType } from "@/constants/tabs";
+import { useLazy, type LazyProps } from "@/composables/useLazy";
 
 interface Props extends LazyProps {
   id: TabType;
