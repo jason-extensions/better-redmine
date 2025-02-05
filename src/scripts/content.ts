@@ -63,17 +63,22 @@ function getBaseUrl(): string {
 }
 
 /**
- * 獲取表格中被選中的資料
- * @returns 選中的資料陣列
+ * 獲取表格中被選中的資料，如果沒有選中任何列則返回所有列的資料
+ * @returns 選中的資料陣列或所有資料陣列
  */
 function getSelectedTableData(): RedmineItem[] {
   const table = document.querySelector<HTMLTableElement>("#content table.list");
   if (!table) return [];
 
   const columnIndexes = getColumnIndexes(table);
-  const selectedRows = Array.from(table.querySelectorAll("tr")).filter((row) => row.querySelector('td input[type="checkbox"]:checked'));
+  const allRows = Array.from(table.querySelectorAll("tbody tr"));
 
-  return selectedRows.map((row) => {
+  const selectedRows = allRows.filter((row) => row.querySelector('input[type="checkbox"]:checked'));
+
+  // 如果沒有選中任何列，則使用所有列
+  const rowsToProcess = selectedRows.length > 0 ? selectedRows : allRows;
+
+  return rowsToProcess.map((row) => {
     const cells = row.getElementsByTagName("td");
     const subjectCell = cells[columnIndexes.subject];
     const subjectLink = subjectCell?.querySelector("a");
