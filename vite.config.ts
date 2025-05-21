@@ -18,12 +18,16 @@ export default defineConfig({
       input: {
         popup: "./index.html",
         content: "src/scripts/content.ts",
+        background: "src/scripts/background.ts",
       },
       output: {
         // 入口檔案命名
         entryFileNames: (chunkInfo) => {
           if (chunkInfo.name === "content") {
             return "content.js";
+          }
+          if (chunkInfo.name === "background") {
+            return "background.js";
           }
           if (chunkInfo.name === "contentInject") {
             return "inject.js";

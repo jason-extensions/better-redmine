@@ -1,39 +1,61 @@
 <script setup lang="ts">
 import AppButton from "@/components/app/AppButton.vue";
 import AppInput from "@/components/app/AppInput.vue";
+import { useGetCurrentTabId } from "@/composables/useGetCurrentTabId";
 import { ref } from "vue";
 
 const formatTemplate = ref("- [#{id}]({url})");
 const showOnlySelected = ref(false);
 const result = ref("");
 
-const formatData = async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab.id) return;
+const { getCurrentTabId } = useGetCurrentTabId();
 
-  chrome.tabs.sendMessage(tab.id, { action: "getSelectedData" }, (response: MessageResponse) => {
-    if (response?.data) {
-      result.value = response.data
-        .map((item: RedmineItem) => {
-          let formatted = formatTemplate.value;
-          Object.entries(item).forEach(([key, value]) => {
-            formatted = formatted.replace(`{${key}}`, String(value));
-          });
-          return formatted;
-        })
-        .join("\n");
-    }
-  });
+const formatData = async () => {
+  try {
+    const tabId = await getCurrentTabId();
+
+    chrome.tabs.sendMessage(tabId, { action: "getSelectedData" }, (response: MessageResponse) => {
+      if (chrome.runtime.lastError) {
+        console.error("Error:", chrome.runtime.lastError);
+        return;
+      }
+
+      if (response?.data) {
+        result.value = response.data
+          .map((item: RedmineItem) => {
+            let formatted = formatTemplate.value;
+            Object.entries(item).forEach(([key, value]) => {
+              formatted = formatted.replace(`{${key}}`, String(value));
+            });
+            return formatted;
+          })
+          .join("\n");
+      }
+    });
+  } catch (error) {
+    console.error("Error:", error);
+  }
 };
 
 const toggleVisibility = async () => {
-  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab.id) return;
+  try {
+    const tabId = await getCurrentTabId();
 
-  chrome.tabs.sendMessage(tab.id, {
-    action: "toggleVisibility",
-    showOnlySelected: showOnlySelected.value,
-  });
+    chrome.tabs.sendMessage(
+      tabId,
+      {
+        action: "toggleVisibility",
+        showOnlySelected: showOnlySelected.value,
+      },
+      (response) => {
+        if (chrome.runtime.lastError) {
+          console.error("Error:", chrome.runtime.lastError);
+        }
+      }
+    );
+  } catch (error) {
+    console.error("Error:", error);
+  }
 };
 </script>
 
@@ -128,11 +150,14 @@ const toggleVisibility = async () => {
   margin-bottom: 1rem;
 }
 
+.format-input label {
+  margin-bottom: 0.5rem;
+}
+
 label {
   display: block;
   font-size: 0.875rem;
   font-weight: 600;
-  margin-bottom: 0.5rem;
   color: var(--text-color);
 }
 
