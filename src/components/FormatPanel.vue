@@ -150,11 +150,14 @@ const toggleVisibility = async () => {
   margin-bottom: 1rem;
 }
 
+.format-input label {
+  margin-bottom: 0.5rem;
+}
+
 label {
   display: block;
   font-size: 0.875rem;
   font-weight: 600;
-  margin-bottom: 0.5rem;
   color: var(--text-color);
 }
 

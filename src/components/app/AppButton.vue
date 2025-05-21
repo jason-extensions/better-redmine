@@ -33,7 +33,6 @@ defineProps<Props>();
   font-size: 0.875rem;
   cursor: pointer;
   transition: all 0.2s;
-  margin-bottom: 1rem;
   box-shadow: var(--shadow-sm);
 }
 
