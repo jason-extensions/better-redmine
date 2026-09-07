@@ -1,11 +1,10 @@
 <script setup lang="ts">
 import { v4 as uuidv4 } from "uuid";
-import type { NavItem } from "@/types/nav";
 import AppButton from "@/components/app/AppButton.vue";
 import AppInput from "@/components/app/AppInput.vue";
 import { ref, onMounted, computed } from "vue";
-import { useStorage } from "@/composables/useStorage";
-import { useSetting } from "@/composables/useSetting";
+import { useSetting, useSettingStorage } from "@/composables/useSetting";
+import { NAV_ITEMS_SETTING } from "@/constants/settings";
 
 const newPath = ref("");
 const newLabel = ref("");
@@ -31,11 +30,8 @@ const fullPath = computed(() => {
 
 const { siteUrl } = useSetting();
 
-// 使用 useStorage 來管理導航項目
-const { data: navItems } = useStorage<NavItem[]>({
-  key: "navItems",
-  defaultValue: [],
-});
+// 使用設定登錄表管理導航項目
+const { data: navItems } = useSettingStorage(NAV_ITEMS_SETTING);
 
 /**
  * 獲取當前頁面的 URL、路徑、查詢參數和錨點

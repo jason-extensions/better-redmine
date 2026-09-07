@@ -2,9 +2,11 @@
 import AppButton from "@/components/app/AppButton.vue";
 import AppInput from "@/components/app/AppInput.vue";
 import { useGetCurrentTabId } from "@/composables/useGetCurrentTabId";
+import { useSettingStorage } from "@/composables/useSetting";
+import { FORMAT_TEMPLATE_SETTING } from "@/constants/settings";
 import { ref } from "vue";
 
-const formatTemplate = ref("- [#{id}]({url})");
+const { data: formatTemplate } = useSettingStorage(FORMAT_TEMPLATE_SETTING);
 const showOnlySelected = ref(false);
 const result = ref("");
 
