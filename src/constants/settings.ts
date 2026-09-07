@@ -26,31 +26,6 @@ export interface SettingDefinition<T> {
 const rejected = (): SettingParseResult<never> => ({ value: null, warnings: [] });
 
 /**
- * 站台網址。
- * 因為使用處是與路徑直接串接（`${siteUrl}${path}`），這裡會移除結尾斜線。
- */
-export const SITE_URL_SETTING: SettingDefinition<string> = {
-  key: "site-url",
-  label: "站台網址",
-  createDefaultValue: () => "https://redmine.twjoin.com",
-  parse: (raw) => {
-    if (typeof raw !== "string") return rejected();
-
-    const normalized = raw.trim().replace(/\/+$/, "");
-    if (!normalized) return rejected();
-
-    try {
-      const { protocol } = new URL(normalized);
-      if (protocol !== "http:" && protocol !== "https:") return rejected();
-    } catch {
-      return rejected();
-    }
-
-    return { value: normalized, warnings: [] };
-  },
-};
-
-/**
  * 淨化單筆快捷導航。
  * id 缺失時補發新的，讓手動編輯過的設定檔也能匯入。
  */
@@ -101,7 +76,6 @@ export const FORMAT_TEMPLATE_SETTING: SettingDefinition<string> = {
 
 /** 匯出／匯入涵蓋的設定範圍；未列於此的 chrome.storage 內容都不會被讀寫 */
 export const SETTING_DEFINITIONS: readonly SettingDefinition<unknown>[] = [
-  SITE_URL_SETTING,
   NAV_ITEMS_SETTING,
   FORMAT_TEMPLATE_SETTING,
 ];

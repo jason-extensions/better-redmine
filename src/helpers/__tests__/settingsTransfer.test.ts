@@ -3,7 +3,6 @@ import {
   FORMAT_TEMPLATE_SETTING,
   NAV_ITEMS_SETTING,
   SETTING_DEFINITIONS,
-  SITE_URL_SETTING,
 } from "@/constants/settings";
 import {
   SETTINGS_FILE_APP,
@@ -62,29 +61,27 @@ describe("parseSettingsFile - 檔案層級驗證", () => {
 
 describe("parseSettingsFile - 完全取代語意", () => {
   it("即使檔案只帶一項設定，仍為每個已登錄的設定產生值", () => {
-    const result = parseSettingsFile(makeFileText({ [SITE_URL_SETTING.key]: "https://redmine.example.com" }));
+    const result = parseSettingsFile(makeFileText({ [FORMAT_TEMPLATE_SETTING.key]: "- {id}" }));
 
     if (!result.ok) throw new Error(result.error);
     expect(Object.keys(result.plan.values).sort()).toEqual(SETTING_DEFINITIONS.map((d) => d.key).sort());
   });
 
   it("檔案缺少的設定回退為預設值並列入 resetToDefault", () => {
-    const result = parseSettingsFile(makeFileText({ [SITE_URL_SETTING.key]: "https://redmine.example.com" }));
+    const result = parseSettingsFile(makeFileText({ [FORMAT_TEMPLATE_SETTING.key]: "- {id}" }));
 
     if (!result.ok) throw new Error(result.error);
     expect(result.plan.values[NAV_ITEMS_SETTING.key]).toEqual(NAV_ITEMS_SETTING.createDefaultValue());
     expect(result.plan.resetToDefault.map((entry) => entry.key)).toContain(NAV_ITEMS_SETTING.key);
-    expect(result.plan.applied).toEqual([SITE_URL_SETTING.key]);
+    expect(result.plan.applied).toEqual([FORMAT_TEMPLATE_SETTING.key]);
   });
 
   it("區分「檔案沒有這一項」與「內容無效」兩種回退原因", () => {
-    const result = parseSettingsFile(
-      makeFileText({ [SITE_URL_SETTING.key]: "javascript:alert(1)" })
-    );
+    const result = parseSettingsFile(makeFileText({ [FORMAT_TEMPLATE_SETTING.key]: "   " }));
 
     if (!result.ok) throw new Error(result.error);
     const reasons = Object.fromEntries(result.plan.resetToDefault.map((entry) => [entry.key, entry.reason]));
-    expect(reasons[SITE_URL_SETTING.key]).toBe("invalid");
+    expect(reasons[FORMAT_TEMPLATE_SETTING.key]).toBe("invalid");
     expect(reasons[NAV_ITEMS_SETTING.key]).toBe("missing");
   });
 
@@ -133,23 +130,6 @@ describe("parseSettingsFile - navItems 淨化", () => {
   });
 });
 
-describe("parseSettingsFile - siteUrl 淨化", () => {
-  it("移除結尾斜線，避免與路徑串接後出現雙斜線", () => {
-    const result = parseSettingsFile(makeFileText({ [SITE_URL_SETTING.key]: "https://redmine.example.com/" }));
-
-    if (!result.ok) throw new Error(result.error);
-    expect(result.plan.values[SITE_URL_SETTING.key]).toBe("https://redmine.example.com");
-  });
-
-  it("不是 http(s) 網址時回退預設值", () => {
-    const result = parseSettingsFile(makeFileText({ [SITE_URL_SETTING.key]: "javascript:alert(1)" }));
-
-    if (!result.ok) throw new Error(result.error);
-    expect(result.plan.values[SITE_URL_SETTING.key]).toBe(SITE_URL_SETTING.createDefaultValue());
-    expect(result.plan.resetToDefault.map((entry) => entry.key)).toContain(SITE_URL_SETTING.key);
-  });
-});
-
 describe("storage 編解碼", () => {
   it("toStorageEntries 產出 useStorage 讀得懂的 JSON 字串", () => {
     const entries = toStorageEntries({ [FORMAT_TEMPLATE_SETTING.key]: "- {id}" });
@@ -173,7 +153,6 @@ describe("storage 編解碼", () => {
 describe("匯出後再匯入", () => {
   it("還原出與匯出當下相同的 storage 內容", () => {
     const original = toStorageEntries({
-      [SITE_URL_SETTING.key]: "https://redmine.example.com",
       [NAV_ITEMS_SETTING.key]: [navItem(), navItem({ id: "22222222-2222-4222-8222-222222222222", path: "/time_entries", label: "工時" })],
       [FORMAT_TEMPLATE_SETTING.key]: "- [#{id}]({url}) {subject}",
     });

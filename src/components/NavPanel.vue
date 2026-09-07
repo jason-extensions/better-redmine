@@ -3,7 +3,8 @@ import { v4 as uuidv4 } from "uuid";
 import AppButton from "@/components/app/AppButton.vue";
 import AppInput from "@/components/app/AppInput.vue";
 import { ref, onMounted, computed } from "vue";
-import { useSetting, useSettingStorage } from "@/composables/useSetting";
+import { useSettingStorage } from "@/composables/useSetting";
+import { BASE_URL } from "@/constants/site";
 import { NAV_ITEMS_SETTING } from "@/constants/settings";
 
 const newPath = ref("");
@@ -27,8 +28,6 @@ const fullPath = computed(() => {
 
   return result;
 });
-
-const { siteUrl } = useSetting();
 
 // 使用設定登錄表管理導航項目
 const { data: navItems } = useSettingStorage(NAV_ITEMS_SETTING);
@@ -95,7 +94,7 @@ const removeNavItem = (id: string) => {
  * 導航到目標頁面
  */
 const navigateTo = (path: string) => {
-  const url = `${siteUrl.value}${path}`;
+  const url = `${BASE_URL}${path}`;
   chrome.tabs.create({ url });
 };
 
