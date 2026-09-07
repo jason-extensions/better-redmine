@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import AppButton from "@/components/app/AppButton.vue";
-import AppInput from "@/components/app/AppInput.vue";
-import { useSetting } from "@/composables/useSetting";
 import { SETTING_DEFINITIONS } from "@/constants/settings";
 import {
   buildSettingsFile,
@@ -17,8 +15,6 @@ interface StatusMessage {
   type: "success" | "error";
   text: string;
 }
-
-const { siteUrl } = useSetting();
 
 const fileInput = ref<HTMLInputElement | null>(null);
 const status = ref<StatusMessage | null>(null);
@@ -128,12 +124,6 @@ const importSettings = async (event: Event) => {
 <template>
   <div class="settings-panel">
     <section class="section">
-      <label for="site-url">站台網址</label>
-      <AppInput id="site-url" v-model="siteUrl" placeholder="https://redmine.example.com" :spellcheck="false" />
-      <p class="hint">快捷導航會以此網址為基準開啟頁面。</p>
-    </section>
-
-    <section class="section">
       <h3 class="section-title">設定備份</h3>
       <p class="hint">匯出後可在另一台瀏覽器匯入，涵蓋：{{ SETTING_DEFINITIONS.map((d) => d.label).join("、") }}。</p>
 
@@ -162,14 +152,6 @@ const importSettings = async (event: Event) => {
 
 .section-title {
   margin: 0 0 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-color);
-}
-
-label {
-  display: block;
-  margin-bottom: 0.5rem;
   font-size: 0.875rem;
   font-weight: 600;
   color: var(--text-color);

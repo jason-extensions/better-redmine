@@ -9,54 +9,56 @@ import { ref } from "vue";
 const { data: formatTemplate } = useSettingStorage(FORMAT_TEMPLATE_SETTING);
 const showOnlySelected = ref(false);
 const result = ref("");
+const errorMessage = ref("");
 
 const { getCurrentTabId } = useGetCurrentTabId();
 
+/**
+ * 以模板格式化單筆議題。
+ * 用 split/join 做字面值取代：同一個關鍵字可在模板中重複出現，
+ * 且議題內容中的 $& 等字元不會被當成特殊取代語法。
+ */
+const formatItem = (item: RedmineItem) =>
+  Object.entries(item).reduce(
+    (formatted, [key, value]) => formatted.split(`{${key}}`).join(String(value)),
+    formatTemplate.value
+  );
+
+const UNREACHABLE_PAGE_MESSAGE = "無法與頁面溝通，請確認目前分頁停留在 Redmine 的議題列表頁";
+
 const formatData = async () => {
+  errorMessage.value = "";
+
   try {
     const tabId = await getCurrentTabId();
+    const response: MessageResponse = await chrome.tabs.sendMessage(tabId, { action: "getSelectedData" });
 
-    chrome.tabs.sendMessage(tabId, { action: "getSelectedData" }, (response: MessageResponse) => {
-      if (chrome.runtime.lastError) {
-        console.error("Error:", chrome.runtime.lastError);
-        return;
-      }
+    if (!response?.data?.length) {
+      errorMessage.value = "這個頁面上找不到議題列表";
+      return;
+    }
 
-      if (response?.data) {
-        result.value = response.data
-          .map((item: RedmineItem) => {
-            let formatted = formatTemplate.value;
-            Object.entries(item).forEach(([key, value]) => {
-              formatted = formatted.replace(`{${key}}`, String(value));
-            });
-            return formatted;
-          })
-          .join("\n");
-      }
-    });
+    result.value = response.data.map(formatItem).join("\n");
   } catch (error) {
     console.error("Error:", error);
+    errorMessage.value = UNREACHABLE_PAGE_MESSAGE;
   }
 };
 
 const toggleVisibility = async () => {
+  errorMessage.value = "";
+
   try {
     const tabId = await getCurrentTabId();
-
-    chrome.tabs.sendMessage(
-      tabId,
-      {
-        action: "toggleVisibility",
-        showOnlySelected: showOnlySelected.value,
-      },
-      (response) => {
-        if (chrome.runtime.lastError) {
-          console.error("Error:", chrome.runtime.lastError);
-        }
-      }
-    );
+    await chrome.tabs.sendMessage(tabId, {
+      action: "toggleVisibility",
+      showOnlySelected: showOnlySelected.value,
+    });
   } catch (error) {
     console.error("Error:", error);
+    errorMessage.value = UNREACHABLE_PAGE_MESSAGE;
+    // 頁面沒有套用，把開關切回實際狀態
+    showOnlySelected.value = !showOnlySelected.value;
   }
 };
 </script>
@@ -82,6 +84,8 @@ const toggleVisibility = async () => {
   </div>
 
   <AppButton @click="formatData">格式化</AppButton>
+
+  <p v-if="errorMessage" class="error-message">{{ errorMessage }}</p>
 
   <div class="result">
     <textarea id="result" v-model="result" readonly placeholder="格式化結果將顯示在這裡..."></textarea>
@@ -182,6 +186,17 @@ label {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.75rem;
   color: var(--text-color);
+}
+
+.error-message {
+  margin: 1rem 0 0;
+  padding: 0.75rem;
+  border: 1px solid var(--error-color);
+  border-radius: 0.75rem;
+  background-color: var(--error-bg);
+  color: var(--error-color);
+  font-size: 0.8125rem;
+  line-height: 1.5;
 }
 
 .result {

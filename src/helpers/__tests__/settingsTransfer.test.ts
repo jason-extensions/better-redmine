@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  BATCH_SHORTCUTS_SETTING,
   FORMAT_TEMPLATE_SETTING,
   NAV_ITEMS_SETTING,
   SETTING_DEFINITIONS,
-  SITE_URL_SETTING,
 } from "@/constants/settings";
 import {
   SETTINGS_FILE_APP,
@@ -14,6 +14,7 @@ import {
   toStorageEntries,
 } from "@/helpers/settingsTransfer";
 import type { NavItem } from "@/types/nav";
+import type { BatchShortcut } from "@/types/batch";
 
 /** 組出一份合法的匯出檔文字，settings 內容可覆寫 */
 const makeFileText = (settings: Record<string, unknown>, overrides: Record<string, unknown> = {}) =>
@@ -62,29 +63,27 @@ describe("parseSettingsFile - 檔案層級驗證", () => {
 
 describe("parseSettingsFile - 完全取代語意", () => {
   it("即使檔案只帶一項設定，仍為每個已登錄的設定產生值", () => {
-    const result = parseSettingsFile(makeFileText({ [SITE_URL_SETTING.key]: "https://redmine.example.com" }));
+    const result = parseSettingsFile(makeFileText({ [FORMAT_TEMPLATE_SETTING.key]: "- {id}" }));
 
     if (!result.ok) throw new Error(result.error);
     expect(Object.keys(result.plan.values).sort()).toEqual(SETTING_DEFINITIONS.map((d) => d.key).sort());
   });
 
   it("檔案缺少的設定回退為預設值並列入 resetToDefault", () => {
-    const result = parseSettingsFile(makeFileText({ [SITE_URL_SETTING.key]: "https://redmine.example.com" }));
+    const result = parseSettingsFile(makeFileText({ [FORMAT_TEMPLATE_SETTING.key]: "- {id}" }));
 
     if (!result.ok) throw new Error(result.error);
     expect(result.plan.values[NAV_ITEMS_SETTING.key]).toEqual(NAV_ITEMS_SETTING.createDefaultValue());
     expect(result.plan.resetToDefault.map((entry) => entry.key)).toContain(NAV_ITEMS_SETTING.key);
-    expect(result.plan.applied).toEqual([SITE_URL_SETTING.key]);
+    expect(result.plan.applied).toEqual([FORMAT_TEMPLATE_SETTING.key]);
   });
 
   it("區分「檔案沒有這一項」與「內容無效」兩種回退原因", () => {
-    const result = parseSettingsFile(
-      makeFileText({ [SITE_URL_SETTING.key]: "javascript:alert(1)" })
-    );
+    const result = parseSettingsFile(makeFileText({ [FORMAT_TEMPLATE_SETTING.key]: "   " }));
 
     if (!result.ok) throw new Error(result.error);
     const reasons = Object.fromEntries(result.plan.resetToDefault.map((entry) => [entry.key, entry.reason]));
-    expect(reasons[SITE_URL_SETTING.key]).toBe("invalid");
+    expect(reasons[FORMAT_TEMPLATE_SETTING.key]).toBe("invalid");
     expect(reasons[NAV_ITEMS_SETTING.key]).toBe("missing");
   });
 
@@ -133,20 +132,56 @@ describe("parseSettingsFile - navItems 淨化", () => {
   });
 });
 
-describe("parseSettingsFile - siteUrl 淨化", () => {
-  it("移除結尾斜線，避免與路徑串接後出現雙斜線", () => {
-    const result = parseSettingsFile(makeFileText({ [SITE_URL_SETTING.key]: "https://redmine.example.com/" }));
+const shortcut = (overrides: Partial<BatchShortcut> = {}) => ({
+  id: "33333333-3333-4333-8333-333333333333",
+  fieldLabel: "狀態",
+  valueLabel: "開發處理完畢",
+  param: "issue[status_id]",
+  paramValue: "11",
+  ...overrides,
+});
+
+describe("parseSettingsFile - batchShortcuts 淨化", () => {
+  it("保留完整的快捷鍵", () => {
+    const result = parseSettingsFile(makeFileText({ [BATCH_SHORTCUTS_SETTING.key]: [shortcut()] }));
 
     if (!result.ok) throw new Error(result.error);
-    expect(result.plan.values[SITE_URL_SETTING.key]).toBe("https://redmine.example.com");
+    expect(result.plan.values[BATCH_SHORTCUTS_SETTING.key]).toEqual([shortcut()]);
   });
 
-  it("不是 http(s) 網址時回退預設值", () => {
-    const result = parseSettingsFile(makeFileText({ [SITE_URL_SETTING.key]: "javascript:alert(1)" }));
+  it("丟棄缺少 param 的快捷鍵並提出警告", () => {
+    const broken = { ...shortcut(), param: "   " };
+    const result = parseSettingsFile(makeFileText({ [BATCH_SHORTCUTS_SETTING.key]: [shortcut(), broken] }));
 
     if (!result.ok) throw new Error(result.error);
-    expect(result.plan.values[SITE_URL_SETTING.key]).toBe(SITE_URL_SETTING.createDefaultValue());
-    expect(result.plan.resetToDefault.map((entry) => entry.key)).toContain(SITE_URL_SETTING.key);
+    expect(result.plan.values[BATCH_SHORTCUTS_SETTING.key]).toEqual([shortcut()]);
+    expect(result.plan.warnings.length).toBe(1);
+  });
+
+  it("保留 paramValue 為 \"0\" 的快捷鍵（完成百分比 0%）", () => {
+    const zero = shortcut({ fieldLabel: "完成百分比", valueLabel: "0%", param: "issue[done_ratio]", paramValue: "0" });
+    const result = parseSettingsFile(makeFileText({ [BATCH_SHORTCUTS_SETTING.key]: [zero] }));
+
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.values[BATCH_SHORTCUTS_SETTING.key]).toEqual([zero]);
+  });
+
+  it("為缺少 id 的快捷鍵補上 id", () => {
+    const { id: _id, ...withoutId } = shortcut();
+    const result = parseSettingsFile(makeFileText({ [BATCH_SHORTCUTS_SETTING.key]: [withoutId] }));
+
+    if (!result.ok) throw new Error(result.error);
+    const [item] = result.plan.values[BATCH_SHORTCUTS_SETTING.key] as BatchShortcut[];
+    expect(item.id).toBeTruthy();
+    expect(item).toMatchObject(withoutId);
+  });
+
+  it("batchShortcuts 不是陣列時整項回退預設值", () => {
+    const result = parseSettingsFile(makeFileText({ [BATCH_SHORTCUTS_SETTING.key]: 42 }));
+
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.values[BATCH_SHORTCUTS_SETTING.key]).toEqual(BATCH_SHORTCUTS_SETTING.createDefaultValue());
+    expect(result.plan.resetToDefault.map((entry) => entry.key)).toContain(BATCH_SHORTCUTS_SETTING.key);
   });
 });
 
@@ -173,9 +208,9 @@ describe("storage 編解碼", () => {
 describe("匯出後再匯入", () => {
   it("還原出與匯出當下相同的 storage 內容", () => {
     const original = toStorageEntries({
-      [SITE_URL_SETTING.key]: "https://redmine.example.com",
       [NAV_ITEMS_SETTING.key]: [navItem(), navItem({ id: "22222222-2222-4222-8222-222222222222", path: "/time_entries", label: "工時" })],
       [FORMAT_TEMPLATE_SETTING.key]: "- [#{id}]({url}) {subject}",
+      [BATCH_SHORTCUTS_SETTING.key]: [shortcut()],
     });
 
     const file = buildSettingsFile(fromStorageEntries(original), "2026-09-07T00:00:00.000Z");

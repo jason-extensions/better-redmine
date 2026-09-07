@@ -1,5 +1,6 @@
 import { v4 as uuidv4 } from "uuid";
 import type { NavItem } from "@/types/nav";
+import type { BatchShortcut } from "@/types/batch";
 
 export interface SettingParseResult<T> {
   /** 淨化後的值；null 代表整項無效，呼叫端應回退為預設值 */
@@ -24,31 +25,6 @@ export interface SettingDefinition<T> {
 
 /** 整項無效 */
 const rejected = (): SettingParseResult<never> => ({ value: null, warnings: [] });
-
-/**
- * 站台網址。
- * 因為使用處是與路徑直接串接（`${siteUrl}${path}`），這裡會移除結尾斜線。
- */
-export const SITE_URL_SETTING: SettingDefinition<string> = {
-  key: "site-url",
-  label: "站台網址",
-  createDefaultValue: () => "https://redmine.twjoin.com",
-  parse: (raw) => {
-    if (typeof raw !== "string") return rejected();
-
-    const normalized = raw.trim().replace(/\/+$/, "");
-    if (!normalized) return rejected();
-
-    try {
-      const { protocol } = new URL(normalized);
-      if (protocol !== "http:" && protocol !== "https:") return rejected();
-    } catch {
-      return rejected();
-    }
-
-    return { value: normalized, warnings: [] };
-  },
-};
 
 /**
  * 淨化單筆快捷導航。
@@ -99,9 +75,49 @@ export const FORMAT_TEMPLATE_SETTING: SettingDefinition<string> = {
   },
 };
 
+/**
+ * 淨化單筆批量修改快捷鍵。
+ * 四個欄位皆為必填字串；paramValue 可能是 "0"（完成百分比 0%），
+ * 因此以「非空字串」而非真假值判斷。
+ */
+const parseBatchShortcut = (raw: unknown): BatchShortcut | null => {
+  if (typeof raw !== "object" || raw === null) return null;
+
+  const { id, fieldLabel, valueLabel, param, paramValue } = raw as Record<string, unknown>;
+  const requiredFields = [fieldLabel, valueLabel, param, paramValue];
+  if (requiredFields.some((field) => typeof field !== "string" || !field.trim())) return null;
+
+  return {
+    id: typeof id === "string" && id ? id : uuidv4(),
+    fieldLabel: (fieldLabel as string).trim(),
+    valueLabel: (valueLabel as string).trim(),
+    param: (param as string).trim(),
+    paramValue: (paramValue as string).trim(),
+  };
+};
+
+export const BATCH_SHORTCUTS_SETTING: SettingDefinition<BatchShortcut[]> = {
+  key: "batchShortcuts",
+  label: "批量修改快捷鍵",
+  createDefaultValue: () => [],
+  parse: (raw) => {
+    if (!Array.isArray(raw)) return rejected();
+
+    const warnings: string[] = [];
+    const value = raw.reduce<BatchShortcut[]>((items, entry, index) => {
+      const item = parseBatchShortcut(entry);
+      if (item) items.push(item);
+      else warnings.push(`批量修改快捷鍵第 ${index + 1} 筆缺少必要欄位，已略過`);
+      return items;
+    }, []);
+
+    return { value, warnings };
+  },
+};
+
 /** 匯出／匯入涵蓋的設定範圍；未列於此的 chrome.storage 內容都不會被讀寫 */
 export const SETTING_DEFINITIONS: readonly SettingDefinition<unknown>[] = [
-  SITE_URL_SETTING,
   NAV_ITEMS_SETTING,
   FORMAT_TEMPLATE_SETTING,
+  BATCH_SHORTCUTS_SETTING,
 ];

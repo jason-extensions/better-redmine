@@ -1,5 +1,5 @@
 import { useStorage } from "./useStorage";
-import { SITE_URL_SETTING, type SettingDefinition } from "@/constants/settings";
+import type { SettingDefinition } from "@/constants/settings";
 
 /**
  * 依設定登錄表建立響應式設定。
@@ -7,12 +7,4 @@ import { SITE_URL_SETTING, type SettingDefinition } from "@/constants/settings";
  */
 export function useSettingStorage<T>(definition: SettingDefinition<T>) {
   return useStorage<T>({ key: definition.key, defaultValue: definition.createDefaultValue() });
-}
-
-export function useSetting() {
-  const { data: siteUrl } = useSettingStorage(SITE_URL_SETTING);
-
-  return {
-    siteUrl,
-  };
 }
