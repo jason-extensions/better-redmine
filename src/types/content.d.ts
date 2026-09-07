@@ -14,6 +14,7 @@ interface RedmineItem {
 interface MessageResponse {
   data?: RedmineItem[];
   fields?: import("@/types/batch").BatchField[];
+  issue?: import("@/types/issue").IssueSummary;
   success?: boolean;
   error?: string;
 }
@@ -37,7 +38,11 @@ interface ApplyBatchShortcutMessage {
   paramValue: string;
 }
 
-type Message = ToggleMessage | GetDataMessage | GetBatchFieldsMessage | ApplyBatchShortcutMessage;
+interface GetCurrentIssueMessage {
+  action: "getCurrentIssue";
+}
+
+type Message = ToggleMessage | GetDataMessage | GetBatchFieldsMessage | ApplyBatchShortcutMessage | GetCurrentIssueMessage;
 
 declare namespace chrome.runtime {
   interface MessageSender {
