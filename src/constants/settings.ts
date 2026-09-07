@@ -1,6 +1,7 @@
 import { v4 as uuidv4 } from "uuid";
 import type { NavItem } from "@/types/nav";
 import type { BatchShortcut } from "@/types/batch";
+import type { FormatTemplate } from "@/types/format";
 
 export interface SettingParseResult<T> {
   /** 淨化後的值；null 代表整項無效，呼叫端應回退為預設值 */
@@ -76,6 +77,59 @@ export const FORMAT_TEMPLATE_SETTING: SettingDefinition<string> = {
 };
 
 /**
+ * 議題頁一鍵複製所用的模板。
+ * 與格式化模板分開，因為兩者的使用情境不同：這裡永遠是單一議題，
+ * 且預設帶上編號，貼到別處後仍能回頭搜尋。
+ */
+export const ISSUE_LINK_TEMPLATE_SETTING: SettingDefinition<string> = {
+  key: "issue-link-template",
+  label: "議題連結模板",
+  createDefaultValue: () => "[#{id} {subject}]({url})",
+  parse: (raw) => {
+    if (typeof raw !== "string" || !raw.trim()) return rejected();
+    return { value: raw, warnings: [] };
+  },
+};
+
+/**
+ * 淨化單筆模板收藏。
+ * name 去除前後空白；template 只用來判斷是否為空，值本身原樣保留，
+ * 因為模板前後的空白可能是輸出格式的一部分。
+ */
+const parseFormatTemplate = (raw: unknown): FormatTemplate | null => {
+  if (typeof raw !== "object" || raw === null) return null;
+
+  const { id, name, template } = raw as Record<string, unknown>;
+  if (typeof name !== "string" || !name.trim()) return null;
+  if (typeof template !== "string" || !template.trim()) return null;
+
+  return {
+    id: typeof id === "string" && id ? id : uuidv4(),
+    name: name.trim(),
+    template,
+  };
+};
+
+export const FORMAT_TEMPLATES_SETTING: SettingDefinition<FormatTemplate[]> = {
+  key: "formatTemplates",
+  label: "格式化模板收藏",
+  createDefaultValue: () => [],
+  parse: (raw) => {
+    if (!Array.isArray(raw)) return rejected();
+
+    const warnings: string[] = [];
+    const value = raw.reduce<FormatTemplate[]>((items, entry, index) => {
+      const item = parseFormatTemplate(entry);
+      if (item) items.push(item);
+      else warnings.push(`格式化模板收藏第 ${index + 1} 筆缺少名稱或模板內容，已略過`);
+      return items;
+    }, []);
+
+    return { value, warnings };
+  },
+};
+
+/**
  * 淨化單筆批量修改快捷鍵。
  * 四個欄位皆為必填字串；paramValue 可能是 "0"（完成百分比 0%），
  * 因此以「非空字串」而非真假值判斷。
@@ -119,5 +173,7 @@ export const BATCH_SHORTCUTS_SETTING: SettingDefinition<BatchShortcut[]> = {
 export const SETTING_DEFINITIONS: readonly SettingDefinition<unknown>[] = [
   NAV_ITEMS_SETTING,
   FORMAT_TEMPLATE_SETTING,
+  FORMAT_TEMPLATES_SETTING,
+  ISSUE_LINK_TEMPLATE_SETTING,
   BATCH_SHORTCUTS_SETTING,
 ];

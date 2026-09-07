@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ref } from "vue";
+
 defineProps<{
   modelValue: string;
   placeholder?: string;
@@ -9,10 +11,16 @@ defineProps<{
 defineEmits<{
   (e: "update:modelValue", value: string): void;
 }>();
+
+const inputRef = ref<HTMLInputElement | null>(null);
+
+/** 露出底層 input，讓呼叫端能做游標定位這類原生操作 */
+defineExpose({ inputRef });
 </script>
 
 <template>
   <input
+    ref="inputRef"
     type="text"
     :value="modelValue"
     @input="$emit('update:modelValue', ($event.target as HTMLInputElement).value)"
