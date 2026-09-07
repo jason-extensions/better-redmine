@@ -278,6 +278,3 @@ chrome.runtime.onMessage.addListener((request: Message, sender: chrome.runtime.M
   }
   return true; // 保持連接開啟
 });
-
-// 通知 background script 內容腳本已載入
-chrome.runtime.sendMessage({ action: "contentScriptReady" });
