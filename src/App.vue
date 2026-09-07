@@ -4,6 +4,7 @@ import TabPanel from "@/components/TabPanel.vue";
 import FormatPanel from "@/components/FormatPanel.vue";
 import BatchPanel from "@/components/BatchPanel.vue";
 import NavPanel from "@/components/NavPanel.vue";
+import SettingsPanel from "@/components/SettingsPanel.vue";
 import { TabType, TabLabel } from "@/constants/tabs";
 
 const activeTab = ref<TabType>(TabType.FORMAT);
@@ -31,6 +32,10 @@ const switchTab = (tab: TabType) => {
 
     <TabPanel :id="TabType.NAV" :active-tab="activeTab">
       <NavPanel />
+    </TabPanel>
+
+    <TabPanel :id="TabType.SETTINGS" :active-tab="activeTab">
+      <SettingsPanel />
     </TabPanel>
   </div>
 </template>
