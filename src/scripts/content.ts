@@ -1,4 +1,9 @@
+import { parseBulkUpdateHref } from "@/helpers/contextMenu";
+import type { BatchField, BatchFieldOption } from "@/types/batch";
+
 const HIDDEN_CLASS = "redmine-formatter-hidden";
+
+const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : "未知錯誤");
 
 // 在文件頭部插入所需的 CSS 樣式
 const style = document.createElement("style");
@@ -147,111 +152,105 @@ function toggleUnselectedRows(showOnlySelected: boolean): void {
   });
 }
 
+const CONTEXT_MENU_TIMEOUT = 3000;
+const CONTEXT_MENU_POLL_INTERVAL = 50;
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
- * 開啟指定行的上下文選單
- * @param row - 表格行元素
- * @returns 上下文選單元素
+ * 取得表格中被勾選的列
+ * @param table - 表格元素
  */
-async function openContextMenu(row: HTMLElement): Promise<HTMLElement | null> {
-  return new Promise((resolve) => {
-    const contextMenuTrigger = row.querySelector<HTMLElement>(".js-contextmenu");
-    if (contextMenuTrigger) {
-      contextMenuTrigger.click();
-      // 等一段時間，確保上下文選單已經開啟
-      setTimeout(() => {
-        resolve(document.querySelector<HTMLElement>("#context-menu") || null);
-      }, 500);
-    } else {
-      resolve(null);
-    }
-  });
+function getSelectedRows(table: HTMLTableElement): HTMLElement[] {
+  return Array.from(table.querySelectorAll<HTMLElement>("tbody tr")).filter((row) =>
+    row.querySelector('input[type="checkbox"]:checked')
+  );
 }
 
 /**
- * 在上下文選單中找到指定選項
- * @param contextMenu - 上下文選單元素
- * @param key - 選項名稱
- * @returns 選項的子選單
+ * 開啟 Redmine 的右鍵選單。
+ * 選單內容由當下勾選的列決定，因此必須先有勾選。
+ * @returns 選單元素
  */
-function findSubmenu(contextMenu: HTMLElement, key: string): HTMLElement | null {
-  const menuItems = contextMenu.querySelectorAll("li a");
-  for (const item of menuItems) {
-    if (item.textContent?.trim() === key) {
-      return item.closest("li")?.querySelector("ul") || null;
-    }
+async function openContextMenu(): Promise<HTMLElement> {
+  const table = document.querySelector<HTMLTableElement>("#content table.list");
+  if (!table) throw new Error("這個頁面上找不到議題列表");
+
+  const selectedRows = getSelectedRows(table);
+  if (!selectedRows.length) throw new Error("請先在頁面上勾選要修改的議題");
+
+  const trigger = selectedRows[0].querySelector<HTMLElement>(".js-contextmenu");
+  if (!trigger) throw new Error("無法開啟 Redmine 的右鍵選單");
+
+  trigger.click();
+
+  const deadline = Date.now() + CONTEXT_MENU_TIMEOUT;
+  while (Date.now() < deadline) {
+    const contextMenu = document.querySelector<HTMLElement>("#context-menu");
+    if (contextMenu?.querySelector("a[href]")) return contextMenu;
+    await delay(CONTEXT_MENU_POLL_INTERVAL);
   }
+
+  throw new Error("開啟右鍵選單逾時");
+}
+
+/** Redmine 以 document 上的 click 關閉選單 */
+function closeContextMenu(): void {
+  document.body.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+}
+
+/**
+ * 讀出選單中所有可批次修改的欄位與選項。
+ * 僅保留 href 指向 bulk_update 且帶有 issue[...] 參數的項目，
+ * 因此「監看員」「大量編輯」「篩選器」等非欄位項目會自動被排除。
+ * @param contextMenu - 選單元素
+ */
+function readBatchFields(contextMenu: HTMLElement): BatchField[] {
+  const fields: BatchField[] = [];
+
+  contextMenu.querySelectorAll<HTMLLIElement>(":scope > ul > li").forEach((item) => {
+    const label = item.querySelector<HTMLAnchorElement>(":scope > a")?.textContent?.trim();
+    if (!label) return;
+
+    const options: BatchFieldOption[] = [];
+    item.querySelectorAll<HTMLAnchorElement>(":scope > ul > li > a").forEach((link) => {
+      const target = parseBulkUpdateHref(link.getAttribute("href") || "");
+      const optionLabel = link.textContent?.trim();
+      if (target && optionLabel) options.push({ label: optionLabel, ...target });
+    });
+
+    if (options.length) fields.push({ label, options });
+  });
+
+  return fields;
+}
+
+/**
+ * 在選單中找出對應快捷鍵的連結
+ * @param contextMenu - 選單元素
+ * @param param - bulk_update 的參數名
+ * @param paramValue - 參數值
+ */
+function findShortcutLink(contextMenu: HTMLElement, param: string, paramValue: string): HTMLAnchorElement | null {
+  const links = contextMenu.querySelectorAll<HTMLAnchorElement>("a[href]");
+
+  for (const link of links) {
+    const target = parseBulkUpdateHref(link.getAttribute("href") || "");
+    if (target?.param === param && target.paramValue === paramValue) return link;
+  }
+
   return null;
 }
 
 /**
- * 在子選單中設置指定值
- * @param submenu - 子選單元素
- * @param value - 目標值
- * @param issueId - 議題 ID
- * @returns 是否成功設置值
+ * 取得目前可用的批次修改欄位
  */
-function setValue(submenu: HTMLElement, value: string, issueId: string): boolean {
-  const items = submenu.querySelectorAll("a");
-  for (const item of items) {
-    if (item.textContent?.trim() === value) {
-      const originalHref = item.getAttribute("href") || "";
-      const newHref = originalHref.replace(/\/issues\/\d+/, `/issues/${issueId}`);
-      item.setAttribute("href", newHref);
-      item.click();
-      return true;
-    }
-  }
-  return false;
-}
+async function getBatchFields(): Promise<BatchField[]> {
+  const contextMenu = await openContextMenu();
+  const fields = readBatchFields(contextMenu);
+  closeContextMenu();
 
-/**
- * 批量更新議題欄位
- * @param key - 要更新的欄位名稱
- * @param value - 要設置的值
- */
-async function batchUpdate(key: string, value: string): Promise<void> {
-  const table = document.querySelector<HTMLTableElement>("#content table.list");
-  if (!table) return;
-
-  const selectedRows = Array.from(table.querySelectorAll<HTMLElement>("tbody tr")).filter((row) =>
-    row.querySelector('input[type="checkbox"]:checked')
-  );
-
-  if (!selectedRows.length) {
-    throw new Error("沒有選中任何列");
-  }
-
-  const contextMenu = await openContextMenu(selectedRows[0]);
-  if (!contextMenu) {
-    throw new Error("無法開啟上下文選單");
-  }
-
-  const submenu = findSubmenu(contextMenu, key);
-  if (!submenu) {
-    throw new Error("無法找到子選單");
-  }
-
-  const columnIndexes = getColumnIndexes(table);
-
-  for (const row of selectedRows) {
-    const cells = row.getElementsByTagName("td");
-    const subjectCell = cells[columnIndexes.subject];
-    const subjectLink = subjectCell?.querySelector("a");
-
-    if (!subjectLink?.href) {
-      continue;
-    }
-
-    const issueId = extractIssueId(subjectLink.href);
-    if (!issueId) {
-      continue;
-    }
-
-    setValue(submenu, value, issueId);
-
-    // 等待一小段時間，避免請求過於頻繁
-    await new Promise((resolve) => setTimeout(resolve, 500));
-  }
+  return fields;
 }
 
 // 監聽來自 popup 的訊息
@@ -262,16 +261,33 @@ chrome.runtime.onMessage.addListener((request: Message, sender: chrome.runtime.M
   } else if (request.action === "toggleVisibility") {
     toggleUnselectedRows(request.showOnlySelected);
     sendResponse({ success: true });
-  } else if (request.action === "batchUpdate") {
+  } else if (request.action === "getBatchFields") {
     (async () => {
       try {
-        await batchUpdate(request.key, request.value);
-        sendResponse({ success: true });
+        sendResponse({ fields: await getBatchFields() });
       } catch (error) {
-        sendResponse({
-          success: false,
-          error: error instanceof Error ? error.message : "未知錯誤",
-        });
+        sendResponse({ success: false, error: toErrorMessage(error) });
+      }
+    })();
+    return true; // 保持連接開啟，等待非同步回應
+  } else if (request.action === "applyBatchShortcut") {
+    (async () => {
+      try {
+        const contextMenu = await openContextMenu();
+        const link = findShortcutLink(contextMenu, request.param, request.paramValue);
+
+        if (!link) {
+          closeContextMenu();
+          sendResponse({ success: false, error: "這個頁面的右鍵選單中找不到該選項" });
+          return;
+        }
+
+        // 點擊會送出 bulk_update 並使頁面重新載入，本 content script 隨即失效，
+        // 因此先回覆再點，讓側邊欄知道指令已成功送出。
+        sendResponse({ success: true });
+        setTimeout(() => link.click(), 0);
+      } catch (error) {
+        sendResponse({ success: false, error: toErrorMessage(error) });
       }
     })();
     return true; // 保持連接開啟，等待非同步回應

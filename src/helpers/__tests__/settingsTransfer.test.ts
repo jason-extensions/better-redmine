@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  BATCH_SHORTCUTS_SETTING,
   FORMAT_TEMPLATE_SETTING,
   NAV_ITEMS_SETTING,
   SETTING_DEFINITIONS,
@@ -13,6 +14,7 @@ import {
   toStorageEntries,
 } from "@/helpers/settingsTransfer";
 import type { NavItem } from "@/types/nav";
+import type { BatchShortcut } from "@/types/batch";
 
 /** 組出一份合法的匯出檔文字，settings 內容可覆寫 */
 const makeFileText = (settings: Record<string, unknown>, overrides: Record<string, unknown> = {}) =>
@@ -130,6 +132,59 @@ describe("parseSettingsFile - navItems 淨化", () => {
   });
 });
 
+const shortcut = (overrides: Partial<BatchShortcut> = {}) => ({
+  id: "33333333-3333-4333-8333-333333333333",
+  fieldLabel: "狀態",
+  valueLabel: "開發處理完畢",
+  param: "issue[status_id]",
+  paramValue: "11",
+  ...overrides,
+});
+
+describe("parseSettingsFile - batchShortcuts 淨化", () => {
+  it("保留完整的快捷鍵", () => {
+    const result = parseSettingsFile(makeFileText({ [BATCH_SHORTCUTS_SETTING.key]: [shortcut()] }));
+
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.values[BATCH_SHORTCUTS_SETTING.key]).toEqual([shortcut()]);
+  });
+
+  it("丟棄缺少 param 的快捷鍵並提出警告", () => {
+    const broken = { ...shortcut(), param: "   " };
+    const result = parseSettingsFile(makeFileText({ [BATCH_SHORTCUTS_SETTING.key]: [shortcut(), broken] }));
+
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.values[BATCH_SHORTCUTS_SETTING.key]).toEqual([shortcut()]);
+    expect(result.plan.warnings.length).toBe(1);
+  });
+
+  it("保留 paramValue 為 \"0\" 的快捷鍵（完成百分比 0%）", () => {
+    const zero = shortcut({ fieldLabel: "完成百分比", valueLabel: "0%", param: "issue[done_ratio]", paramValue: "0" });
+    const result = parseSettingsFile(makeFileText({ [BATCH_SHORTCUTS_SETTING.key]: [zero] }));
+
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.values[BATCH_SHORTCUTS_SETTING.key]).toEqual([zero]);
+  });
+
+  it("為缺少 id 的快捷鍵補上 id", () => {
+    const { id: _id, ...withoutId } = shortcut();
+    const result = parseSettingsFile(makeFileText({ [BATCH_SHORTCUTS_SETTING.key]: [withoutId] }));
+
+    if (!result.ok) throw new Error(result.error);
+    const [item] = result.plan.values[BATCH_SHORTCUTS_SETTING.key] as BatchShortcut[];
+    expect(item.id).toBeTruthy();
+    expect(item).toMatchObject(withoutId);
+  });
+
+  it("batchShortcuts 不是陣列時整項回退預設值", () => {
+    const result = parseSettingsFile(makeFileText({ [BATCH_SHORTCUTS_SETTING.key]: 42 }));
+
+    if (!result.ok) throw new Error(result.error);
+    expect(result.plan.values[BATCH_SHORTCUTS_SETTING.key]).toEqual(BATCH_SHORTCUTS_SETTING.createDefaultValue());
+    expect(result.plan.resetToDefault.map((entry) => entry.key)).toContain(BATCH_SHORTCUTS_SETTING.key);
+  });
+});
+
 describe("storage 編解碼", () => {
   it("toStorageEntries 產出 useStorage 讀得懂的 JSON 字串", () => {
     const entries = toStorageEntries({ [FORMAT_TEMPLATE_SETTING.key]: "- {id}" });
@@ -155,6 +210,7 @@ describe("匯出後再匯入", () => {
     const original = toStorageEntries({
       [NAV_ITEMS_SETTING.key]: [navItem(), navItem({ id: "22222222-2222-4222-8222-222222222222", path: "/time_entries", label: "工時" })],
       [FORMAT_TEMPLATE_SETTING.key]: "- [#{id}]({url}) {subject}",
+      [BATCH_SHORTCUTS_SETTING.key]: [shortcut()],
     });
 
     const file = buildSettingsFile(fromStorageEntries(original), "2026-09-07T00:00:00.000Z");

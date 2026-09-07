@@ -13,6 +13,7 @@ interface RedmineItem {
 
 interface MessageResponse {
   data?: RedmineItem[];
+  fields?: import("@/types/batch").BatchField[];
   success?: boolean;
   error?: string;
 }
@@ -26,13 +27,17 @@ interface GetDataMessage {
   action: "getSelectedData";
 }
 
-interface BatchUpdateMessage {
-  action: "batchUpdate";
-  key: string;
-  value: string;
+interface GetBatchFieldsMessage {
+  action: "getBatchFields";
 }
 
-type Message = ToggleMessage | GetDataMessage | BatchUpdateMessage;
+interface ApplyBatchShortcutMessage {
+  action: "applyBatchShortcut";
+  param: string;
+  paramValue: string;
+}
+
+type Message = ToggleMessage | GetDataMessage | GetBatchFieldsMessage | ApplyBatchShortcutMessage;
 
 declare namespace chrome.runtime {
   interface MessageSender {
