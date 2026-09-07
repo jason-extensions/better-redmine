@@ -1,5 +1,7 @@
 import { parseIssueUpdateHref } from "@/helpers/contextMenu";
+import { parseIssueUrl } from "@/helpers/issuePage";
 import type { BatchField, BatchFieldOption } from "@/types/batch";
+import type { IssueSummary } from "@/types/issue";
 
 const HIDDEN_CLASS = "redmine-formatter-hidden";
 
@@ -284,6 +286,27 @@ async function getBatchFields(): Promise<BatchField[]> {
   }
 }
 
+/**
+ * 議題標題所在的元素。
+ * 取 h3 而不是整個 .subject：議題有父議題時，.subject 會把父議題的標題
+ * 一起帶進 textContent，複製出來的連結標題就會多出一截。
+ */
+const ISSUE_SUBJECT_SELECTOR = ".subject h3";
+
+/**
+ * 讀出目前議題頁的編號、標題與網址。
+ * 以網址判斷是否為單一議題頁，因此議題列表、編輯頁等都會被擋下。
+ */
+function getCurrentIssue(): IssueSummary {
+  const parsed = parseIssueUrl(window.location.href);
+  if (!parsed) throw new Error("請在單一議題的頁面上使用");
+
+  const subject = document.querySelector(ISSUE_SUBJECT_SELECTOR)?.textContent?.trim();
+  if (!subject) throw new Error("這個頁面上找不到議題標題");
+
+  return { ...parsed, subject };
+}
+
 // 監聽來自 popup 的訊息
 chrome.runtime.onMessage.addListener((request: Message, sender: chrome.runtime.MessageSender, sendResponse: (response: MessageResponse) => void) => {
   if (request.action === "getSelectedData") {
@@ -292,6 +315,12 @@ chrome.runtime.onMessage.addListener((request: Message, sender: chrome.runtime.M
   } else if (request.action === "toggleVisibility") {
     toggleUnselectedRows(request.showOnlySelected);
     sendResponse({ success: true });
+  } else if (request.action === "getCurrentIssue") {
+    try {
+      sendResponse({ issue: getCurrentIssue() });
+    } catch (error) {
+      sendResponse({ success: false, error: toErrorMessage(error) });
+    }
   } else if (request.action === "getBatchFields") {
     (async () => {
       try {

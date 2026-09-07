@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   BATCH_SHORTCUTS_SETTING,
+  FORMAT_TEMPLATES_SETTING,
   FORMAT_TEMPLATE_SETTING,
+  ISSUE_LINK_TEMPLATE_SETTING,
   NAV_ITEMS_SETTING,
   SETTING_DEFINITIONS,
 } from "@/constants/settings";
@@ -210,6 +212,10 @@ describe("匯出後再匯入", () => {
     const original = toStorageEntries({
       [NAV_ITEMS_SETTING.key]: [navItem(), navItem({ id: "22222222-2222-4222-8222-222222222222", path: "/time_entries", label: "工時" })],
       [FORMAT_TEMPLATE_SETTING.key]: "- [#{id}]({url}) {subject}",
+      [FORMAT_TEMPLATES_SETTING.key]: [
+        { id: "44444444-4444-4444-8444-444444444444", name: "Markdown 清單", template: "- [#{id}]({url})" },
+      ],
+      [ISSUE_LINK_TEMPLATE_SETTING.key]: "[#{id} {subject}]({url})",
       [BATCH_SHORTCUTS_SETTING.key]: [shortcut()],
     });
 
