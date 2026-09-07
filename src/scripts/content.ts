@@ -1,4 +1,4 @@
-import { parseBulkUpdateHref } from "@/helpers/contextMenu";
+import { parseIssueUpdateHref } from "@/helpers/contextMenu";
 import type { BatchField, BatchFieldOption } from "@/types/batch";
 
 const HIDDEN_CLASS = "redmine-formatter-hidden";
@@ -158,6 +158,16 @@ const CONTEXT_MENU_POLL_INTERVAL = 50;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
+ * 取得議題列表表格
+ */
+function getIssueTable(): HTMLTableElement {
+  const table = document.querySelector<HTMLTableElement>("#content table.list");
+  if (!table) throw new Error("這個頁面上找不到議題列表");
+
+  return table;
+}
+
+/**
  * 取得表格中被勾選的列
  * @param table - 表格元素
  */
@@ -168,18 +178,21 @@ function getSelectedRows(table: HTMLTableElement): HTMLElement[] {
 }
 
 /**
- * 開啟 Redmine 的右鍵選單。
- * 選單內容由當下勾選的列決定，因此必須先有勾選。
+ * 取得表格中第一個議題的勾選框。
+ * 以勾選框為準而非第一列，可避開分組列等沒有勾選框的列。
+ * @param table - 表格元素
+ */
+function findFirstIssueCheckbox(table: HTMLTableElement): HTMLInputElement | null {
+  return table.querySelector<HTMLInputElement>('tbody tr input[type="checkbox"]');
+}
+
+/**
+ * 開啟 Redmine 的右鍵選單
+ * @param row - 要開啟選單的列，須為已勾選的列
  * @returns 選單元素
  */
-async function openContextMenu(): Promise<HTMLElement> {
-  const table = document.querySelector<HTMLTableElement>("#content table.list");
-  if (!table) throw new Error("這個頁面上找不到議題列表");
-
-  const selectedRows = getSelectedRows(table);
-  if (!selectedRows.length) throw new Error("請先在頁面上勾選要修改的議題");
-
-  const trigger = selectedRows[0].querySelector<HTMLElement>(".js-contextmenu");
+async function openContextMenu(row: HTMLElement): Promise<HTMLElement> {
+  const trigger = row.querySelector<HTMLElement>(".js-contextmenu");
   if (!trigger) throw new Error("無法開啟 Redmine 的右鍵選單");
 
   trigger.click();
@@ -201,8 +214,9 @@ function closeContextMenu(): void {
 
 /**
  * 讀出選單中所有可批次修改的欄位與選項。
- * 僅保留 href 指向 bulk_update 且帶有 issue[...] 參數的項目，
- * 因此「監看員」「大量編輯」「篩選器」等非欄位項目會自動被排除。
+ * 判別交給 parseIssueUpdateHref，因此「監看員」「大量編輯」「記錄時間」
+ * 「新增子任務」等非欄位項目會自動被排除；議題目前已是的值 Redmine 以
+ * href="#" 呈現，同樣不會出現在選項中。
  * @param contextMenu - 選單元素
  */
 function readBatchFields(contextMenu: HTMLElement): BatchField[] {
@@ -214,7 +228,7 @@ function readBatchFields(contextMenu: HTMLElement): BatchField[] {
 
     const options: BatchFieldOption[] = [];
     item.querySelectorAll<HTMLAnchorElement>(":scope > ul > li > a").forEach((link) => {
-      const target = parseBulkUpdateHref(link.getAttribute("href") || "");
+      const target = parseIssueUpdateHref(link.getAttribute("href") || "");
       const optionLabel = link.textContent?.trim();
       if (target && optionLabel) options.push({ label: optionLabel, ...target });
     });
@@ -228,14 +242,14 @@ function readBatchFields(contextMenu: HTMLElement): BatchField[] {
 /**
  * 在選單中找出對應快捷鍵的連結
  * @param contextMenu - 選單元素
- * @param param - bulk_update 的參數名
+ * @param param - 更新參數名
  * @param paramValue - 參數值
  */
 function findShortcutLink(contextMenu: HTMLElement, param: string, paramValue: string): HTMLAnchorElement | null {
   const links = contextMenu.querySelectorAll<HTMLAnchorElement>("a[href]");
 
   for (const link of links) {
-    const target = parseBulkUpdateHref(link.getAttribute("href") || "");
+    const target = parseIssueUpdateHref(link.getAttribute("href") || "");
     if (target?.param === param && target.paramValue === paramValue) return link;
   }
 
@@ -243,14 +257,31 @@ function findShortcutLink(contextMenu: HTMLElement, param: string, paramValue: s
 }
 
 /**
- * 取得目前可用的批次修改欄位
+ * 取得目前可用的批次修改欄位。
+ * 沒有勾選任何議題時，暫時勾選第一筆以產生選單，讀取後還原；
+ * 此流程只讀取選單內容，不會變更任何議題。
  */
 async function getBatchFields(): Promise<BatchField[]> {
-  const contextMenu = await openContextMenu();
-  const fields = readBatchFields(contextMenu);
-  closeContextMenu();
+  const table = getIssueTable();
+  const hasSelection = getSelectedRows(table).length > 0;
+  const temporaryCheckbox = hasSelection ? null : findFirstIssueCheckbox(table);
 
-  return fields;
+  if (!hasSelection && !temporaryCheckbox) throw new Error("這個頁面上沒有可選取的議題");
+
+  temporaryCheckbox?.click();
+
+  try {
+    const [row] = getSelectedRows(table);
+    if (!row) throw new Error("這個頁面上沒有可選取的議題");
+
+    const contextMenu = await openContextMenu(row);
+    const fields = readBatchFields(contextMenu);
+    closeContextMenu();
+
+    return fields;
+  } finally {
+    temporaryCheckbox?.click();
+  }
 }
 
 // 監聽來自 popup 的訊息
@@ -273,12 +304,20 @@ chrome.runtime.onMessage.addListener((request: Message, sender: chrome.runtime.M
   } else if (request.action === "applyBatchShortcut") {
     (async () => {
       try {
-        const contextMenu = await openContextMenu();
+        const table = getIssueTable();
+        const [row] = getSelectedRows(table);
+        // 這是寫入操作，不自動代選，避免更新到使用者沒有挑選的議題
+        if (!row) throw new Error("請先在頁面上勾選要修改的議題");
+
+        const contextMenu = await openContextMenu(row);
         const link = findShortcutLink(contextMenu, request.param, request.paramValue);
 
         if (!link) {
           closeContextMenu();
-          sendResponse({ success: false, error: "這個頁面的右鍵選單中找不到該選項" });
+          sendResponse({
+            success: false,
+            error: "選取的議題上找不到這個選項，可能是議題已經是這個值，或工作流程不允許這樣轉換",
+          });
           return;
         }
 

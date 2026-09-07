@@ -1,6 +1,6 @@
-/** Redmine context menu 中一個可批次修改的目標欄位與值 */
-export interface BulkUpdateTarget {
-  /** bulk_update 的參數名，例如 issue[status_id] */
+/** Redmine context menu 中一個可修改的目標欄位與值 */
+export interface IssueUpdateTarget {
+  /** 更新參數名，例如 issue[status_id] */
   param: string;
   /** 參數值，例如 11 */
   paramValue: string;
@@ -10,17 +10,24 @@ export interface BulkUpdateTarget {
 const RELATIVE_HREF_BASE = "https://redmine.invalid";
 
 /**
- * 從 context menu 連結的 href 取出可批次修改的欄位與值。
+ * 從 context menu 連結的 href 取出要修改的欄位與值。
  *
- * Redmine 在多選時產生的 href 形如
- * `/issues/bulk_update?back_url=…&ids[]=1&ids[]=2&issue[status_id]=7`，
- * 其中 ids 與 back_url 會隨當下選取而變，只有 issue[...] 這組參數足以識別
- * 「要把哪個欄位改成哪個值」，因此僅取這一組作為快捷鍵的比對依據。
+ * Redmine 依勾選筆數產生兩種格式：
+ * - 勾選多筆：`/issues/bulk_update?…&ids[]=A&ids[]=B&issue[status_id]=7`
+ * - 勾選單筆：`/issues/{id}?…&ids[]=A&issue[status_id]=7`（data-method="patch"）
+ *
+ * 因此不能以路徑判別，改以「同時具備 ids[] 與 issue[...]」為準。兩者缺一不可：
+ * - 「大量編輯」有 ids[] 但無 issue[...]
+ * - 「新增子任務」有 issue[parent_issue_id] 與 issue[tracker_id] 但無 ids[]，
+ *   若僅檢查 issue[...]，一個追蹤標籤的快捷鍵會誤觸此連結而建立子任務。
+ *
+ * ids[] 與 back_url 會隨當下選取變動，只有 issue[...] 足以識別
+ * 「要把哪個欄位改成哪個值」，故僅取這一組作為快捷鍵的比對依據。
  *
  * @param href context menu 連結的 href
- * @returns 可批次修改的欄位與值；非批次修改用途的連結回傳 null
+ * @returns 欄位與值；非欄位修改用途的連結回傳 null
  */
-export function parseBulkUpdateHref(href: string): BulkUpdateTarget | null {
+export function parseIssueUpdateHref(href: string): IssueUpdateTarget | null {
   if (!href) return null;
 
   let url: URL;
@@ -30,7 +37,7 @@ export function parseBulkUpdateHref(href: string): BulkUpdateTarget | null {
     return null;
   }
 
-  if (!url.pathname.endsWith("/bulk_update")) return null;
+  if (!url.searchParams.has("ids[]")) return null;
 
   for (const [param, paramValue] of url.searchParams) {
     if (param.startsWith("issue[") && param.endsWith("]")) return { param, paramValue };

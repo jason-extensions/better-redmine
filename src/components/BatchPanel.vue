@@ -131,7 +131,7 @@ const applyShortcut = async (shortcut: BatchShortcut) => {
     </div>
 
     <div class="builder">
-      <p class="hint">在 Redmine 頁面勾選任一議題後，讀取該頁面可用的欄位與選項。</p>
+      <p class="hint">讀取 Redmine 頁面上可用的欄位與選項。未勾選任何議題時，會以第一筆的可用選項為準。</p>
 
       <AppButton :loading="loadingFields" @click="loadFields">讀取可用選項</AppButton>
 
