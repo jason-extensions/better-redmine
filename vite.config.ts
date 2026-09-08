@@ -29,9 +29,6 @@ export default defineConfig({
           if (chunkInfo.name === "background") {
             return "background.js";
           }
-          if (chunkInfo.name === "contentInject") {
-            return "inject.js";
-          }
           return "popup/[name].js";
         },
         // 非入口 chunk 檔案命名
