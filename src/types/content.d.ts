@@ -19,11 +19,6 @@ interface MessageResponse {
   error?: string;
 }
 
-interface ToggleMessage {
-  action: "toggleVisibility";
-  showOnlySelected: boolean;
-}
-
 interface GetDataMessage {
   action: "getSelectedData";
 }
@@ -42,7 +37,7 @@ interface GetCurrentIssueMessage {
   action: "getCurrentIssue";
 }
 
-type Message = ToggleMessage | GetDataMessage | GetBatchFieldsMessage | ApplyBatchShortcutMessage | GetCurrentIssueMessage;
+type Message = GetDataMessage | GetBatchFieldsMessage | ApplyBatchShortcutMessage | GetCurrentIssueMessage;
 
 declare namespace chrome.runtime {
   interface MessageSender {
