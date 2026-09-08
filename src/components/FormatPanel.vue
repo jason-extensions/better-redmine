@@ -24,7 +24,6 @@ const { data: formatTemplate } = useSettingStorage(FORMAT_TEMPLATE_SETTING);
 const { data: savedTemplates } = useSettingStorage(FORMAT_TEMPLATES_SETTING);
 const { data: issueLinkTemplate } = useSettingStorage(ISSUE_LINK_TEMPLATE_SETTING);
 
-const showOnlySelected = ref(false);
 const result = ref("");
 const errorMessage = ref("");
 const newTemplateName = ref("");
@@ -164,19 +163,6 @@ const copyResult = async () => {
   errorMessage.value = "";
   if (result.value) await copyAndReport(result.value, "result");
 };
-
-const toggleVisibility = async () => {
-  errorMessage.value = "";
-
-  try {
-    await sendToPage({ action: "toggleVisibility", showOnlySelected: showOnlySelected.value });
-  } catch (error) {
-    console.error("Error:", error);
-    errorMessage.value = UNREACHABLE_PAGE_MESSAGE;
-    // 頁面沒有套用，把開關切回實際狀態
-    showOnlySelected.value = !showOnlySelected.value;
-  }
-};
 </script>
 
 <template>
@@ -185,13 +171,6 @@ const toggleVisibility = async () => {
       {{ copiedTarget === "issueLink" ? "已複製 ✓" : "複製本頁議題連結" }}
     </AppButton>
     <p class="hint">在單一議題頁面上按下，直接複製成 markdown 連結</p>
-  </div>
-
-  <div class="visibility-toggle">
-    <label class="toggle">
-      <input type="checkbox" v-model="showOnlySelected" @change="toggleVisibility" />
-      <span class="toggle-label">僅顯示已選取項目</span>
-    </label>
   </div>
 
   <div class="format-input">
@@ -254,65 +233,6 @@ const toggleVisibility = async () => {
   font-size: 0.75rem;
   color: var(--secondary-text);
   line-height: 1.5;
-}
-
-.visibility-toggle {
-  margin-bottom: 1.25rem;
-  padding: 0.75rem;
-  background-color: var(--input-bg);
-  border-radius: 0.75rem;
-  border: 1px solid var(--border-color);
-  transition: all 0.2s;
-}
-
-.visibility-toggle:hover {
-  background-color: #f3f4f6;
-  border-color: #d1d5db;
-}
-
-.toggle {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.toggle input[type="checkbox"] {
-  position: relative;
-  width: 2.5rem;
-  height: 1.25rem;
-  margin-right: 0.75rem;
-  appearance: none;
-  background-color: #e5e7eb;
-  border-radius: 1rem;
-  transition: all 0.3s;
-  cursor: pointer;
-}
-
-.toggle input[type="checkbox"]:checked {
-  background-color: var(--success-color);
-}
-
-.toggle input[type="checkbox"]::before {
-  content: "";
-  position: absolute;
-  left: 0.125rem;
-  top: 0.125rem;
-  width: 1rem;
-  height: 1rem;
-  background-color: white;
-  border-radius: 50%;
-  transition: transform 0.3s;
-}
-
-.toggle input[type="checkbox"]:checked::before {
-  transform: translateX(1.25rem);
-}
-
-.toggle-label {
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text-color);
-  user-select: none;
 }
 
 .format-input {

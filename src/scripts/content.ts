@@ -3,18 +3,7 @@ import { parseIssueUrl } from "@/helpers/issuePage";
 import type { BatchField, BatchFieldOption } from "@/types/batch";
 import type { IssueSummary } from "@/types/issue";
 
-const HIDDEN_CLASS = "redmine-formatter-hidden";
-
 const toErrorMessage = (error: unknown) => (error instanceof Error ? error.message : "未知錯誤");
-
-// 在文件頭部插入所需的 CSS 樣式
-const style = document.createElement("style");
-style.textContent = `
-  .${HIDDEN_CLASS} {
-    display: none !important;
-  }
-`;
-document.head.appendChild(style);
 
 /**
  * 獲取表格欄位的索引
@@ -134,23 +123,6 @@ function getSelectedTableData(): RedmineItem[] {
       replies: cells[columnIndexes.replies]?.textContent?.trim() || "",
       issues: issuesCell?.textContent?.trim() || "",
     };
-  });
-}
-
-/**
- * 切換未選中列的顯示狀態
- * @param showOnlySelected - 是否只顯示選中的列
- */
-function toggleUnselectedRows(showOnlySelected: boolean): void {
-  const table = document.querySelector<HTMLTableElement>("#content table.list");
-  if (!table) return;
-
-  const rows = table.querySelectorAll("tbody tr");
-  rows.forEach((row) => {
-    const isSelected = row.querySelector('td input[type="checkbox"]:checked');
-    if (!isSelected) {
-      row.classList.toggle(HIDDEN_CLASS, showOnlySelected);
-    }
   });
 }
 
@@ -312,9 +284,6 @@ chrome.runtime.onMessage.addListener((request: Message, sender: chrome.runtime.M
   if (request.action === "getSelectedData") {
     const data = getSelectedTableData();
     sendResponse({ data });
-  } else if (request.action === "toggleVisibility") {
-    toggleUnselectedRows(request.showOnlySelected);
-    sendResponse({ success: true });
   } else if (request.action === "getCurrentIssue") {
     try {
       sendResponse({ issue: getCurrentIssue() });

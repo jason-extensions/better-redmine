@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   BATCH_SHORTCUTS_SETTING,
+  FILTER_PRESETS_SETTING,
+  FILTER_SHORTCUTS_SETTING,
   FORMAT_TEMPLATES_SETTING,
   FORMAT_TEMPLATE_SETTING,
   ISSUE_LINK_TEMPLATE_SETTING,
@@ -217,6 +219,16 @@ describe("匯出後再匯入", () => {
       ],
       [ISSUE_LINK_TEMPLATE_SETTING.key]: "[#{id} {subject}]({url})",
       [BATCH_SHORTCUTS_SETTING.key]: [shortcut()],
+      [FILTER_SHORTCUTS_SETTING.key]: [
+        { id: "66666666-6666-4666-8666-666666666666", label: "只看 Bug", field: "tracker_id", operator: "=", values: ["1"] },
+      ],
+      [FILTER_PRESETS_SETTING.key]: [
+        {
+          id: "77777777-7777-4777-8777-777777777777",
+          label: "我的 Bug 待辦",
+          conditions: [{ field: "tracker_id", operator: "=", values: ["1"] }],
+        },
+      ],
     });
 
     const file = buildSettingsFile(fromStorageEntries(original), "2026-09-07T00:00:00.000Z");

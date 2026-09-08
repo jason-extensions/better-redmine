@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from "uuid";
 import type { NavItem } from "@/types/nav";
 import type { BatchShortcut } from "@/types/batch";
 import type { FormatTemplate } from "@/types/format";
+import type { FilterCondition, FilterPreset, FilterShortcut } from "@/types/filter";
 
 export interface SettingParseResult<T> {
   /** 淨化後的值；null 代表整項無效，呼叫端應回退為預設值 */
@@ -169,6 +170,100 @@ export const BATCH_SHORTCUTS_SETTING: SettingDefinition<BatchShortcut[]> = {
   },
 };
 
+/**
+ * 淨化單筆篩選快捷。
+ * values 允許為空陣列：「進行中」「已結束」這類運算子本身不吃值，
+ * 因此空陣列是合法內容，不能比照必填欄位當成無效。
+ */
+const parseFilterShortcut = (raw: unknown): FilterShortcut | null => {
+  if (typeof raw !== "object" || raw === null) return null;
+
+  const { id, label, field, operator, values } = raw as Record<string, unknown>;
+  const requiredFields = [label, field, operator];
+  if (requiredFields.some((value) => typeof value !== "string" || !value.trim())) return null;
+  if (!Array.isArray(values) || values.some((value) => typeof value !== "string")) return null;
+
+  return {
+    id: typeof id === "string" && id ? id : uuidv4(),
+    label: (label as string).trim(),
+    field: (field as string).trim(),
+    operator: (operator as string).trim(),
+    values: [...(values as string[])],
+  };
+};
+
+export const FILTER_SHORTCUTS_SETTING: SettingDefinition<FilterShortcut[]> = {
+  key: "filterShortcuts",
+  label: "篩選快捷",
+  createDefaultValue: () => [],
+  parse: (raw) => {
+    if (!Array.isArray(raw)) return rejected();
+
+    const warnings: string[] = [];
+    const value = raw.reduce<FilterShortcut[]>((items, entry, index) => {
+      const item = parseFilterShortcut(entry);
+      if (item) items.push(item);
+      else warnings.push(`篩選快捷第 ${index + 1} 筆缺少必要欄位，已略過`);
+      return items;
+    }, []);
+
+    return { value, warnings };
+  },
+};
+
+/** 淨化單一篩選條件；欄位與運算子必填，values 必須是字串陣列 */
+const parseFilterCondition = (raw: unknown): FilterCondition | null => {
+  if (typeof raw !== "object" || raw === null) return null;
+
+  const { field, operator, values } = raw as Record<string, unknown>;
+  if (typeof field !== "string" || !field.trim()) return null;
+  if (typeof operator !== "string" || !operator.trim()) return null;
+  if (!Array.isArray(values) || values.some((value) => typeof value !== "string")) return null;
+
+  return { field: field.trim(), operator: operator.trim(), values: [...(values as string[])] };
+};
+
+/**
+ * 淨化單筆篩選組合。
+ * 只要有任何一個條件無效就整筆丟棄：組合的意義在於完整重現某個視角，
+ * 少掉一個條件會篩出不同的結果，比整筆略過更難察覺。
+ */
+const parseFilterPreset = (raw: unknown): FilterPreset | null => {
+  if (typeof raw !== "object" || raw === null) return null;
+
+  const { id, label, conditions } = raw as Record<string, unknown>;
+  if (typeof label !== "string" || !label.trim()) return null;
+  if (!Array.isArray(conditions)) return null;
+
+  const parsed = conditions.map(parseFilterCondition);
+  if (parsed.some((condition) => condition === null)) return null;
+
+  return {
+    id: typeof id === "string" && id ? id : uuidv4(),
+    label: label.trim(),
+    conditions: parsed as FilterCondition[],
+  };
+};
+
+export const FILTER_PRESETS_SETTING: SettingDefinition<FilterPreset[]> = {
+  key: "filterPresets",
+  label: "篩選組合",
+  createDefaultValue: () => [],
+  parse: (raw) => {
+    if (!Array.isArray(raw)) return rejected();
+
+    const warnings: string[] = [];
+    const value = raw.reduce<FilterPreset[]>((items, entry, index) => {
+      const item = parseFilterPreset(entry);
+      if (item) items.push(item);
+      else warnings.push(`篩選組合第 ${index + 1} 筆的名稱或條件無效，已略過`);
+      return items;
+    }, []);
+
+    return { value, warnings };
+  },
+};
+
 /** 匯出／匯入涵蓋的設定範圍；未列於此的 chrome.storage 內容都不會被讀寫 */
 export const SETTING_DEFINITIONS: readonly SettingDefinition<unknown>[] = [
   NAV_ITEMS_SETTING,
@@ -176,4 +271,6 @@ export const SETTING_DEFINITIONS: readonly SettingDefinition<unknown>[] = [
   FORMAT_TEMPLATES_SETTING,
   ISSUE_LINK_TEMPLATE_SETTING,
   BATCH_SHORTCUTS_SETTING,
+  FILTER_SHORTCUTS_SETTING,
+  FILTER_PRESETS_SETTING,
 ];
